@@ -27,7 +27,14 @@ class DiffEngine:
         # R=True reverses the diff direction to "base → HEAD", so a file
         # deleted in this branch (missing in HEAD, present in base) appears
         # as change_type "D" rather than "A".
-        diff_index = self.repo.head.commit.diff(effective_base, R=True)
+        #
+        # In GitHub Actions, checkout@v4 does not create a local branch for
+        # the base ref — only origin/<base> exists. Try the bare name first;
+        # if git cannot resolve it, fall back to origin/<base>.
+        try:
+            diff_index = self.repo.head.commit.diff(effective_base, R=True)
+        except git.GitCommandError:
+            diff_index = self.repo.head.commit.diff(f"origin/{effective_base}", R=True)
 
         deleted_files = []
         for diff in diff_index:
