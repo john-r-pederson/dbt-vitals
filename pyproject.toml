@@ -1,0 +1,11 @@
+[project]
+name = "isotrope"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "gitpython>=3.1.46",
+    "python-dotenv>=1.2.2",
+    "snowflake-connector-python>=4.3.0",
+]
