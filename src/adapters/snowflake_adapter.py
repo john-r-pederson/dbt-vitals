@@ -15,6 +15,16 @@ from adapters.base import BaseWarehouseAdapter
 _SAFE_IDENTIFIER = re.compile(r"^[A-Z0-9_$]+$")
 
 
+def _format_date(value) -> str | None:
+    """Formats a datetime-like value to a clean YYYY-MM-DD string."""
+    if value is None:
+        return None
+    if hasattr(value, "strftime"):
+        return value.strftime("%Y-%m-%d")
+    # Fallback for string values: truncate to date portion
+    return str(value)[:10]
+
+
 def _validate_identifier(value: str) -> str:
     upper = value.upper()
     if not _SAFE_IDENTIFIER.match(upper):
@@ -94,8 +104,8 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
         return {
             "exists": True,
             "size_gb": size_gb,
-            "last_altered": str(last_altered) if last_altered else None,
-            "last_read": str(last_read) if last_read else None,
+            "last_altered": _format_date(last_altered),
+            "last_read": _format_date(last_read),
         }
 
     def _query_table_metadata(self, db: str, schema: str, table: str):
