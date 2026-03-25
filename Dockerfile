@@ -24,6 +24,7 @@ ENV PYTHONPATH=/app/src
 
 # GitHub Actions mounts the workspace as a different owner than the container user.
 # Mark it as safe so gitpython can read the repository without "dubious ownership" errors.
-RUN git config --global --add safe.directory /github/workspace
+# Use --system (writes to /etc/gitconfig) so it is honoured regardless of $HOME override.
+RUN git config --system --add safe.directory /github/workspace
 
 ENTRYPOINT ["python", "/app/src/main.py"]
