@@ -1,0 +1,36 @@
+{
+    "nodes": {
+        "model.my_project.stg_users": {
+            "resource_type": "model",
+            "original_file_path": "models/staging/stg_users.sql",
+            "database": "PROD_DB",
+            "schema": "STAGING",
+            "name": "stg_users",
+            "alias": "STG_USERS"
+        },
+        "model.my_project.fct_orders": {
+            "resource_type": "model",
+            "original_file_path": "models/marts/fct_orders.sql",
+            "database": "PROD_DB",
+            "schema": "MARTS",
+            "name": "fct_orders",
+            "alias": null
+        },
+        "model.my_project.aliased_model": {
+            "resource_type": "model",
+            "original_file_path": "models/core/aliased_model.sql",
+            "database": "PROD_DB",
+            "schema": "CORE",
+            "name": "aliased_model",
+            "alias": "CUSTOM_ALIAS"
+        },
+        "test.my_project.not_a_model": {
+            "resource_type": "test",
+            "original_file_path": "models/staging/stg_users.sql",
+            "database": "PROD_DB",
+            "schema": "STAGING",
+            "name": "not_a_model",
+            "alias": null
+        }
+    }
+}

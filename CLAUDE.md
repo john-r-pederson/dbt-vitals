@@ -176,3 +176,7 @@ Action definition: `action.yml`
 Container: `Dockerfile`
 
 **`fetch-depth: 0` is mandatory** in the checkout step — shallow clones break the git diff.
+
+**GitHub Actions Docker compatibility — two known gotchas:**
+1. `git config --system safe.directory /github/workspace` is set in the Dockerfile. Must use `--system` (not `--global`) because Actions overrides `$HOME` inside the container, so `/root/.gitconfig` is never read.
+2. `checkout@v4` does not create a local branch for the PR base ref — only `origin/<base>` is available. `DiffEngine` handles this by catching `GitCommandError` and retrying with the `origin/` prefix.
