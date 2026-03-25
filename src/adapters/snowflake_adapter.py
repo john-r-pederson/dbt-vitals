@@ -1,7 +1,10 @@
 import base64
+import logging
 import re
 
 import snowflake.connector
+
+logger = logging.getLogger(__name__)
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
     NoEncryption,
@@ -13,6 +16,9 @@ from adapters.base import BaseWarehouseAdapter
 
 # Snowflake identifiers allow letters, digits, underscores, and dollar signs.
 _SAFE_IDENTIFIER = re.compile(r"^[A-Z0-9_$]+$")
+
+# Kill any query that runs longer than this to prevent a hung CI job.
+_QUERY_TIMEOUT_SECONDS = 60
 
 
 def _format_date(value) -> str | None:
@@ -54,7 +60,7 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
         # 2. Password (basic)
         # 3. externalbrowser (local dev SSO/MFA)
         if cfg.SNOWFLAKE_PRIVATE_KEY:
-            print("🔑 Key-pair auth detected. Connecting headlessly...")
+            logger.info("🔑 Key-pair auth detected. Connecting headlessly...")
             params["private_key"] = self._decode_private_key(
                 cfg.SNOWFLAKE_PRIVATE_KEY,
                 cfg.SNOWFLAKE_PRIVATE_KEY_PASSPHRASE,
@@ -62,13 +68,18 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
         elif cfg.SNOWFLAKE_PASSWORD:
             params["password"] = cfg.SNOWFLAKE_PASSWORD
         else:
-            print("🔑 No key or password. Initiating browser authenticator for SSO/MFA...")
+            logger.info(
+                "🔑 No key or password. Initiating browser authenticator for SSO/MFA..."
+            )
             params["authenticator"] = cfg.SNOWFLAKE_AUTHENTICATOR
 
         try:
             self.ctx = snowflake.connector.connect(**params)
             self.cursor = self.ctx.cursor()
-            print("✅ Snowflake connection established.")
+            self.cursor.execute(
+                f"ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = {_QUERY_TIMEOUT_SECONDS}"
+            )
+            logger.info("✅ Snowflake connection established.")
         except Exception as e:
             error_msg = str(e)
             if "Multi-factor authentication is required" in error_msg:
@@ -79,7 +90,9 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
                 )
             raise Exception(f"Failed to connect to Snowflake: {e}")
 
-    def _decode_private_key(self, private_key_b64: str, passphrase: str | None) -> bytes:
+    def _decode_private_key(
+        self, private_key_b64: str, passphrase: str | None
+    ) -> bytes:
         """Decodes a base64-encoded PEM private key into DER bytes for the connector."""
         pem_bytes = base64.b64decode(private_key_b64)
         pw = passphrase.encode() if passphrase else None
@@ -97,7 +110,12 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
 
         size_gb, last_altered = self._query_table_metadata(db_u, schema_u, table_u)
         if size_gb is None and last_altered is None:
-            return {"exists": False, "size_gb": 0, "last_altered": None, "last_read": None}
+            return {
+                "exists": False,
+                "size_gb": 0,
+                "last_altered": None,
+                "last_read": None,
+            }
 
         last_read = self._query_last_read(db_u, schema_u, table_u)
 
@@ -120,7 +138,9 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
                 return size_gb, last_altered
             return None, None
         except Exception as e:
-            print(f"⚠️  Warning: Could not query INFORMATION_SCHEMA for {db}.{schema}.{table}: {e}")
+            logger.warning(
+                f"⚠️  Warning: Could not query INFORMATION_SCHEMA for {db}.{schema}.{table}: {e}"
+            )
             return None, None
 
     def _query_last_read(self, db: str, schema: str, table: str) -> str | None:
@@ -144,7 +164,9 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
             result = self.cursor.fetchone()
             return result[0] if result and result[0] else None
         except Exception as e:
-            print(f"⚠️  Warning: Could not query ACCESS_HISTORY (check role grants): {e}")
+            logger.warning(
+                f"⚠️  Warning: Could not query ACCESS_HISTORY (check role grants): {e}"
+            )
             return None
 
     def close(self) -> None:
@@ -152,4 +174,4 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
             self.cursor.close()
         if self.ctx:
             self.ctx.close()
-        print("🛡️  Snowflake connection closed.")
+        logger.info("🛡️  Snowflake connection closed.")
