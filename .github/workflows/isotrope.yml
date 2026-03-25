@@ -59,3 +59,4 @@ jobs:
           snowflake-role: ${{ secrets.SNOWFLAKE_ROLE }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           pr-number: ${{ github.event.pull_request.number }}
+          manifest-path: ./test-dbt-repo/target/manifest.json
