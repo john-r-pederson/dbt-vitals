@@ -1,9 +1,12 @@
 import json
+import logging
 import os
 import sys
 import urllib.request
 import urllib.error
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 # Hidden tag used to find and update an existing Isotrope comment on re-runs
 _COMMENT_TAG = "<!-- isotrope-report -->"
@@ -92,11 +95,11 @@ class Reporter:
         if existing_id:
             url = f"{_GITHUB_API_BASE}/repos/{repo}/issues/comments/{existing_id}"
             method = "PATCH"
-            print(f"📝 Updating existing Isotrope comment #{existing_id}...")
+            logger.info(f"📝 Updating existing Isotrope comment #{existing_id}...")
         else:
             url = f"{_GITHUB_API_BASE}/repos/{repo}/issues/{pr}/comments"
             method = "POST"
-            print("📝 Posting new Isotrope comment...")
+            logger.info("📝 Posting new Isotrope comment...")
 
         payload = json.dumps({"body": body}).encode()
         req = urllib.request.Request(url, data=payload, headers=headers, method=method)
@@ -104,11 +107,11 @@ class Reporter:
         try:
             with urllib.request.urlopen(req) as resp:
                 if resp.status in (200, 201):
-                    print("✅ PR comment published.")
+                    logger.info("✅ PR comment published.")
                 else:
-                    print(f"⚠️  Unexpected response status: {resp.status}")
+                    logger.warning(f"⚠️  Unexpected response status: {resp.status}")
         except urllib.error.HTTPError as e:
-            print(f"❌ Failed to post PR comment: {e.code} {e.reason}", file=sys.stderr)
+            logger.error(f"❌ Failed to post PR comment: {e.code} {e.reason}")
             sys.exit(1)
 
     def _find_existing_comment(self, repo: str, pr: str, headers: dict) -> int | None:
@@ -129,7 +132,7 @@ class Reporter:
                     # Follow pagination via Link header
                     url = _parse_next_link(resp.headers.get("Link", ""))
             except Exception as e:
-                print(f"⚠️  Could not fetch existing comments: {e}")
+                logger.warning(f"⚠️  Could not fetch existing comments: {e}")
                 return None
 
         return None

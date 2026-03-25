@@ -59,4 +59,9 @@ jobs:
           snowflake-role: ${{ secrets.SNOWFLAKE_ROLE }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           pr-number: ${{ github.event.pull_request.number }}
+          # -------------------------------------------------------------------
+          # NOTE: the manifest-path below is for Isotrope's own CI test only.
+          # In your dbt repo, remove this line and uncomment one of the
+          # manifest download options above to provide your production manifest.
+          # -------------------------------------------------------------------
           manifest-path: ./test-dbt-repo/target/manifest.json
