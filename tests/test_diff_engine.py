@@ -180,3 +180,54 @@ def test_no_deletions_returns_empty_list(tmp_path):
 def test_invalid_repo_raises(tmp_path):
     with pytest.raises(Exception, match="not a valid git repository"):
         DiffEngine(repo_path=str(tmp_path))
+
+
+def test_falls_back_to_origin_prefix_when_local_branch_missing(tmp_path):
+    """
+    In GitHub Actions, checkout@v4 does not create a local branch for the base
+    ref — only origin/<base> exists.  DiffEngine must retry with origin/<base>
+    when the plain branch name raises GitCommandError.
+    """
+    # Build a bare "remote" repo acting as origin
+    remote_path = tmp_path / "remote"
+    remote_path.mkdir()
+    remote_repo = git.Repo.init(remote_path, bare=True)
+
+    # Build a normal "source" repo, commit on main, push to the bare remote
+    source_path = tmp_path / "source"
+    source_path.mkdir()
+    source_repo = git.Repo.init(source_path)
+    source_repo.config_writer().set_value("user", "name", "Test").release()
+    source_repo.config_writer().set_value("user", "email", "test@test.com").release()
+    source_repo.active_branch.rename("main")
+
+    (source_path / "models").mkdir()
+    (source_path / "models" / "stg_users.sql").write_text("select 1")
+    source_repo.index.add(["models/stg_users.sql"])
+    source_repo.index.commit("initial")
+
+    origin = source_repo.create_remote("origin", str(remote_path))
+    origin.push(refspec="main:main")
+
+    # Clone simulates what checkout@v4 produces: detached HEAD on the feature
+    # commit, with origin/main available but no local main branch.
+    clone_path = tmp_path / "clone"
+    clone_repo = git.Repo.clone_from(str(remote_path), str(clone_path))
+    clone_repo.config_writer().set_value("user", "name", "Test").release()
+    clone_repo.config_writer().set_value("user", "email", "test@test.com").release()
+
+    # Create and push a feature branch that deletes the model
+    clone_repo.git.checkout("-b", "feature/remove-users")
+    (clone_path / "models" / "stg_users.sql").unlink()
+    clone_repo.index.remove(["models/stg_users.sql"])
+    clone_repo.index.commit("remove stg_users")
+
+    # Delete the local main branch to simulate the CI checkout state
+    clone_repo.delete_head("main", force=True)
+
+    # origin/main must still be present; local main must be absent
+    assert "main" not in [h.name for h in clone_repo.heads]
+    assert any(r.name == "origin/main" for r in clone_repo.remotes["origin"].refs)
+
+    deleted = DiffEngine(repo_path=str(clone_path)).get_deleted_models(base_branch="main")
+    assert "models/stg_users.sql" in deleted
