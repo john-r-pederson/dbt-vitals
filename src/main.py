@@ -1,5 +1,9 @@
+import logging
 import os
 import sys
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
 
 from config import get_config
 from diff_engine import DiffEngine
@@ -16,10 +20,10 @@ def run_isotrope():
         manifest = ManifestEngine(provided_path=cfg.MANIFEST_PATH)
         adapter = get_adapter(cfg)
     except FileNotFoundError as e:
-        print(f"❌ FILESYSTEM ERROR: {e}")
+        logger.error(f"❌ FILESYSTEM ERROR: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ INITIALIZATION FAILED: {e}")
+        logger.error(f"❌ INITIALIZATION FAILED: {e}")
         sys.exit(1)
 
     # In GitHub Actions, HEAD is a detached merge commit — active_branch raises TypeError.
@@ -33,13 +37,13 @@ def run_isotrope():
 
     if not deleted_paths:
         if current_branch == cfg.BASE_BRANCH:
-            print(f"ℹ️  Active branch is '{cfg.BASE_BRANCH}'. Isotrope checks feature branches.")
+            logger.info(f"ℹ️  Active branch is '{cfg.BASE_BRANCH}'. Isotrope checks feature branches.")
         else:
-            print(f"✅ No deleted models detected between '{current_branch}' and '{cfg.BASE_BRANCH}'.")
+            logger.info(f"✅ No deleted models detected between '{current_branch}' and '{cfg.BASE_BRANCH}'.")
         adapter.close()
         return
 
-    print(f"🔍 Found {len(deleted_paths)} deleted model(s). Querying warehouse...")
+    logger.info(f"🔍 Found {len(deleted_paths)} deleted model(s). Querying warehouse...")
 
     reports: list[ModelReport] = []
 
