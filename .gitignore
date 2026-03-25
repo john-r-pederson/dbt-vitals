@@ -1,0 +1,7 @@
+.history
+ISOTROPE_BLUEPRINT.md
+.venv/
+.env
+__pycache__/
+target/
+manifest.json
