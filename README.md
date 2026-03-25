@@ -61,7 +61,7 @@ jobs:
       # See "Manifest setup" below.
 
       - name: Run Isotrope
-        uses: isotrope-ai/isotrope@main
+        uses: isotrope-ai/isotrope@v0.1.0
         with:
           warehouse-type: snowflake
           snowflake-account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
