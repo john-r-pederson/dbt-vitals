@@ -22,4 +22,9 @@ COPY src/ ./src/
 # when GitHub Actions sets the working directory to the checked-out workspace.
 ENV PYTHONPATH=/app/src
 
+# GitHub Actions mounts the workspace as a different owner than the container user.
+# Mark it as safe so gitpython can read the repository without "dubious ownership" errors.
+# Use --system (writes to /etc/gitconfig) so it is honoured regardless of $HOME override.
+RUN git config --system --add safe.directory /github/workspace
+
 ENTRYPOINT ["python", "/app/src/main.py"]
