@@ -1,0 +1,76 @@
+name: 'Isotrope'
+description: 'Warehouse impact report for deleted dbt models. Reports size and last-read stats as a PR comment before the table is gone.'
+branding:
+  icon: 'eye'
+  color: 'blue'
+
+inputs:
+  # --- Warehouse ---
+  warehouse-type:
+    description: 'Warehouse type. Supported: snowflake'
+    required: false
+    default: 'snowflake'
+
+  # --- Snowflake Connection ---
+  snowflake-account:
+    description: 'Snowflake account locator (e.g. xy12345.us-east-1). No .snowflakecomputing.com suffix.'
+    required: false
+  snowflake-user:
+    description: 'Snowflake username'
+    required: false
+  snowflake-warehouse:
+    description: 'Snowflake virtual warehouse name'
+    required: false
+  snowflake-database:
+    description: 'Default Snowflake database'
+    required: false
+  snowflake-schema:
+    description: 'Default Snowflake schema'
+    required: false
+  snowflake-role:
+    description: 'Snowflake role. Must have access to INFORMATION_SCHEMA and SNOWFLAKE.ACCOUNT_USAGE.'
+    required: false
+    default: 'ISOTROPE_ROLE'
+
+  # --- Snowflake Auth ---
+  snowflake-private-key:
+    description: 'Base64-encoded RSA private key (PKCS8 PEM). Required for CI. Generate with: base64 -i snowflake_key.p8'
+    required: false
+  snowflake-private-key-passphrase:
+    description: 'Passphrase for the private key. Leave blank if key is unencrypted.'
+    required: false
+
+  # --- Isotrope Behavior ---
+  manifest-path:
+    description: 'Explicit path to dbt manifest.json. Auto-discovered from target/manifest.json if not set.'
+    required: false
+  base-branch:
+    description: 'Branch to diff against. Defaults to GITHUB_BASE_REF (the PR target branch).'
+    required: false
+    default: 'main'
+
+  # --- GitHub ---
+  github-token:
+    description: 'GitHub token for posting the PR comment. Use secrets.GITHUB_TOKEN.'
+    required: true
+  pr-number:
+    description: 'Pull request number. Pass github.event.pull_request.number from your workflow.'
+    required: false
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    WAREHOUSE_TYPE: ${{ inputs.warehouse-type }}
+    SNOWFLAKE_ACCOUNT: ${{ inputs.snowflake-account }}
+    SNOWFLAKE_USER: ${{ inputs.snowflake-user }}
+    SNOWFLAKE_WAREHOUSE: ${{ inputs.snowflake-warehouse }}
+    SNOWFLAKE_DATABASE: ${{ inputs.snowflake-database }}
+    SNOWFLAKE_SCHEMA: ${{ inputs.snowflake-schema }}
+    SNOWFLAKE_ROLE: ${{ inputs.snowflake-role }}
+    SNOWFLAKE_PRIVATE_KEY: ${{ inputs.snowflake-private-key }}
+    SNOWFLAKE_PRIVATE_KEY_PASSPHRASE: ${{ inputs.snowflake-private-key-passphrase }}
+    MANIFEST_PATH: ${{ inputs.manifest-path }}
+    BASE_BRANCH: ${{ inputs.base-branch }}
+    GITHUB_TOKEN: ${{ inputs.github-token }}
+    PR_NUMBER: ${{ inputs.pr-number }}
