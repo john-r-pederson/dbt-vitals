@@ -1,0 +1,61 @@
+name: Isotrope
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'models/**/*.sql'
+
+jobs:
+  isotrope:
+    name: Warehouse Impact Report
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write  # Post PR comments
+      contents: read        # Checkout repo
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history is required — DiffEngine compares HEAD against the
+          # base branch. A shallow clone (default depth=1) will fail the diff.
+          fetch-depth: 0
+
+      # ---------------------------------------------------------------------------
+      # Download your production dbt manifest.json before running Isotrope.
+      # Uncomment and adapt ONE of the options below to match your setup.
+      # ---------------------------------------------------------------------------
+
+      # Option A: Download from S3 (most common for dbt Core teams)
+      # - name: Download manifest from S3
+      #   run: aws s3 cp s3://your-bucket/dbt-artifacts/manifest.json ./target/manifest.json
+      #   env:
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     AWS_REGION: us-east-1
+
+      # Option B: Download from dbt Cloud artifacts API
+      # - name: Download manifest from dbt Cloud
+      #   run: |
+      #     mkdir -p target
+      #     curl -s -H "Authorization: Token ${{ secrets.DBT_CLOUD_API_TOKEN }}" \
+      #       "https://cloud.getdbt.com/api/v2/accounts/${{ secrets.DBT_ACCOUNT_ID }}/runs/latest/artifacts/manifest.json" \
+      #       -o ./target/manifest.json
+
+      # Option C: Manifest is committed to the repo (not recommended for large teams)
+      # No step needed — it will be present after checkout.
+
+      - name: Run Isotrope
+        uses: ./
+        with:
+          warehouse-type: snowflake
+          snowflake-account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          snowflake-user: ${{ secrets.SNOWFLAKE_USER }}
+          snowflake-private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+          snowflake-warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          snowflake-database: ${{ secrets.SNOWFLAKE_DATABASE }}
+          snowflake-schema: ${{ secrets.SNOWFLAKE_SCHEMA }}
+          snowflake-role: ${{ secrets.SNOWFLAKE_ROLE }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
