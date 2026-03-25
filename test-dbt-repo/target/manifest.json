@@ -1,0 +1,12 @@
+{
+    "nodes": {
+        "model.isotrope_test.stg_users": {
+            "resource_type": "model",
+            "original_file_path": "models/stg_users.sql",
+            "database": "ISOTROPE_DB",
+            "schema": "ISOTROPE_STAGING",
+            "name": "stg_users",
+            "alias": "STG_USERS"
+        }
+    }
+}
