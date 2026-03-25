@@ -22,4 +22,8 @@ COPY src/ ./src/
 # when GitHub Actions sets the working directory to the checked-out workspace.
 ENV PYTHONPATH=/app/src
 
+# GitHub Actions mounts the workspace as a different owner than the container user.
+# Mark it as safe so gitpython can read the repository without "dubious ownership" errors.
+RUN git config --global --add safe.directory /github/workspace
+
 ENTRYPOINT ["python", "/app/src/main.py"]
