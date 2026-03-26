@@ -137,8 +137,8 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
         schema_u = _validate_identifier(schema)
         table_u = _validate_identifier(table)
 
-        size_gb, last_altered, table_type, query_error = self._query_table_metadata(db_u, schema_u, table_u)
-        if size_gb is None and last_altered is None:
+        found, size_gb, last_altered, table_type, query_error = self._query_table_metadata(db_u, schema_u, table_u)
+        if not found:
             return {
                 "exists": False,
                 "size_gb": None,
@@ -172,8 +172,14 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
 
     def _query_table_metadata(
         self, db: str, schema: str, table: str
-    ) -> tuple[float | None, Any, str | None, bool]:
-        """Queries INFORMATION_SCHEMA for table size, last altered timestamp, and table type."""
+    ) -> tuple[bool, float | None, Any, str | None, bool]:
+        """
+        Queries INFORMATION_SCHEMA for table size, last altered timestamp, and table type.
+
+        Returns a 5-tuple: (found, size_gb, last_altered, table_type, query_error).
+        `found` is an explicit bool reflecting whether a row was returned — callers
+        should not infer existence from NULL column values.
+        """
         query = (
             f"SELECT BYTES, LAST_ALTERED, TABLE_TYPE "
             f"FROM {db}.INFORMATION_SCHEMA.TABLES "
@@ -190,11 +196,11 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
                 bytes_val, last_altered, table_type = result
                 # Views have NULL BYTES — return None so report can distinguish from empty table
                 size_gb = round(bytes_val / (1024**3), 4) if bytes_val else (0.0 if bytes_val == 0 else None)
-                return size_gb, last_altered, table_type, False
-            return None, None, None, False
+                return True, size_gb, last_altered, table_type, False
+            return False, None, None, None, False
         except Exception as e:
             logger.warning(f"Could not query INFORMATION_SCHEMA for {db}.{schema}.{table}: {e}")
-            return None, None, None, True
+            return False, None, None, None, True
 
     def _query_last_read(self, db: str, schema: str, table: str) -> dict[str, Any]:
         """

@@ -200,7 +200,8 @@ def test_query_table_metadata_returns_all_fields():
     cursor = MagicMock()
     cursor.fetchone.return_value = (1073741824, dt, "BASE TABLE")  # 1 GB in bytes
     adapter.cursor = cursor
-    size_gb, last_altered, table_type, query_error = adapter._query_table_metadata("DB", "SCH", "TBL")
+    found, size_gb, last_altered, table_type, query_error = adapter._query_table_metadata("DB", "SCH", "TBL")
+    assert found is True
     assert size_gb == 1.0
     assert last_altered == dt
     assert table_type == "BASE TABLE"
@@ -214,18 +215,20 @@ def test_query_table_metadata_returns_none_for_view():
     cursor = MagicMock()
     cursor.fetchone.return_value = (None, dt, "VIEW")  # views have NULL bytes
     adapter.cursor = cursor
-    size_gb, last_altered, table_type, query_error = adapter._query_table_metadata("DB", "SCH", "TBL")
+    found, size_gb, last_altered, table_type, query_error = adapter._query_table_metadata("DB", "SCH", "TBL")
+    assert found is True
     assert size_gb is None
     assert table_type == "VIEW"
     assert query_error is False
 
 
-def test_query_table_metadata_returns_none_none_when_not_found():
+def test_query_table_metadata_returns_not_found_when_no_row():
     adapter = SnowflakeAdapter.__new__(SnowflakeAdapter)
     cursor = MagicMock()
     cursor.fetchone.return_value = None
     adapter.cursor = cursor
-    size_gb, last_altered, table_type, query_error = adapter._query_table_metadata("DB", "SCH", "TBL")
+    found, size_gb, last_altered, table_type, query_error = adapter._query_table_metadata("DB", "SCH", "TBL")
+    assert found is False
     assert size_gb is None
     assert last_altered is None
     assert table_type is None
@@ -237,7 +240,8 @@ def test_query_table_metadata_returns_error_flag_on_exception():
     cursor = MagicMock()
     cursor.execute.side_effect = Exception("permission denied")
     adapter.cursor = cursor
-    size_gb, last_altered, table_type, query_error = adapter._query_table_metadata("DB", "SCH", "TBL")
+    found, size_gb, last_altered, table_type, query_error = adapter._query_table_metadata("DB", "SCH", "TBL")
+    assert found is False
     assert size_gb is None
     assert last_altered is None
     assert table_type is None
