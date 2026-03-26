@@ -6,7 +6,7 @@
 
 When a pull request deletes or renames a dbt model, dbt-vitals maps the file to its production warehouse table via `manifest.json`, queries Snowflake for live stats (size, last altered, read count, distinct users), and posts a **Warehouse Impact Report** as a PR comment — before the table is gone.
 
-```
+```markdown
 ## 🔍 dbt-vitals: Warehouse Impact Report
 
 > **2 model(s) deleted or renamed in this PR.** Review before merging.
@@ -120,14 +120,16 @@ dbt-vitals needs your **production** `manifest.json` to map deleted model files 
 
 Add a step **before** "Run dbt-vitals" to make it available. Pick the option that matches your setup:
 
-**Option A — dbt Core: run `dbt compile` in CI**
+#### Option A — dbt Core: run `dbt compile` in CI
+
 ```yaml
 - name: Compile dbt project
   run: dbt compile --profiles-dir . --target prod
 # manifest is now at ./target/manifest.json — no manifest-path input needed
 ```
 
-**Option B — dbt Cloud: download from the artifacts API**
+#### Option B — dbt Cloud: download from the artifacts API
+
 ```yaml
 - name: Download manifest from dbt Cloud
   run: |
@@ -140,7 +142,8 @@ Add a step **before** "Run dbt-vitals" to make it available. Pick the option tha
 > Find your `DBT_ACCOUNT_ID` and `DBT_CLOUD_JOB_ID` in the dbt Cloud URL:
 > `https://cloud.getdbt.com/deploy/{account_id}/projects/{project_id}/jobs/{job_id}`
 
-**Option C — S3 / GCS artifact store**
+#### Option C — S3 / GCS artifact store
+
 ```yaml
 - name: Download manifest from S3
   run: aws s3 cp s3://your-bucket/dbt-artifacts/manifest.json ./target/manifest.json
@@ -150,7 +153,8 @@ Add a step **before** "Run dbt-vitals" to make it available. Pick the option tha
     AWS_REGION: us-east-1
 ```
 
-**Option D — GitHub Actions artifact from a prior job**
+#### Option D — GitHub Actions artifact from a prior job
+
 ```yaml
 - uses: actions/download-artifact@v4
   with:
@@ -167,7 +171,7 @@ No step needed. dbt-vitals auto-discovers `target/manifest.json` from the repo r
 
 Add `[skip dbt-vitals]` anywhere in your PR title to suppress the warehouse check:
 
-```
+```text
 refactor: remove deprecated models [skip dbt-vitals]
 ```
 
@@ -199,6 +203,7 @@ dbt-vitals will exit cleanly without connecting to Snowflake or posting a commen
 dbt-vitals uses key-pair RSA authentication for headless CI — no MFA prompt, no browser.
 
 **Generate a key pair:**
+
 ```bash
 openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out snowflake_key.p8 -nocrypt
 openssl rsa -in snowflake_key.p8 -pubout -out snowflake_key.pub
@@ -206,6 +211,7 @@ base64 -i snowflake_key.p8 | tr -d '\n'   # paste this into SNOWFLAKE_PRIVATE_KE
 ```
 
 **Assign the public key in Snowflake:**
+
 ```sql
 ALTER USER <user> SET RSA_PUBLIC_KEY='<contents of snowflake_key.pub, header/footer excluded>';
 ```
@@ -250,7 +256,7 @@ Delete both key files from your filesystem immediately after — never commit th
 
 Always use `org-account` format. Find it in your Snowflake URL:
 
-```
+```text
 https://app.snowflake.com/myorg/abc12345/
                           ^^^^^ ^^^^^^^^
                           org   account
@@ -303,6 +309,22 @@ The `ACCESS_HISTORY` read count is the closest proxy. If a table shows 318 reads
 | Databricks | Planned |
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the adapter interface and contribution guide.
+
+### Test fixture coverage
+
+The current `tests/fixtures/manifest.json` is minimal — a single model, happy-path only. A more realistic fixture set would cover:
+
+- Multiple models with and without dependents
+- Snapshots and seeds
+- Models missing from the manifest (`original_file_path` not present)
+- Renames where the old path is in the manifest but the new path is not
+- Various materializations (`table`, `view`, `incremental`, `ephemeral`)
+
+This is tracked as a future improvement to increase confidence in edge-case handling without requiring a live warehouse.
+
+### Manifest schema version compatibility
+
+The manifest version check currently logs a warning when an unexpected `dbt_schema_version` is encountered but does not block execution. A future improvement would document the tested version matrix and surface a clearer error message (or hard stop) if a structurally incompatible version is detected.
 
 ---
 

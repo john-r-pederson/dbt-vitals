@@ -83,10 +83,22 @@ class ManifestEngine:
         return mapping, dict(reverse_deps)
 
     def _check_staleness(self, data: dict[str, Any]) -> None:
-        """Warns if the manifest was generated more than 24 hours ago."""
-        generated_at_str = data.get("metadata", {}).get("generated_at")
+        """Logs manifest schema version and warns if the manifest was generated more than 24 hours ago."""
+        metadata = data.get("metadata", {})
+
+        schema_version = metadata.get("dbt_schema_version", "")
+        if schema_version:
+            logger.info(f"Manifest schema version: {schema_version}")
+            if "/manifest/v1" not in schema_version:
+                logger.warning(
+                    f"Unexpected manifest schema version: {schema_version}. "
+                    "dbt-vitals was tested against v1x schemas — output may be incorrect."
+                )
+
+        generated_at_str = metadata.get("generated_at")
         if not generated_at_str:
             return
+
         try:
             generated_at = datetime.fromisoformat(
                 generated_at_str.replace("Z", "+00:00")
