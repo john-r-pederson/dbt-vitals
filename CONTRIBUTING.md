@@ -1,4 +1,4 @@
-# Contributing to Isotrope
+# Contributing to dbt-vitals
 
 Thanks for your interest in contributing. This document covers dev setup, the adapter architecture, and how to submit a PR.
 
@@ -7,8 +7,8 @@ Thanks for your interest in contributing. This document covers dev setup, the ad
 ## Dev setup
 
 ```bash
-git clone https://github.com/isotrope-ai/isotrope.git
-cd isotrope
+git clone https://github.com/Laskr/dbt-vitals.git
+cd dbt-vitals
 uv sync
 uv run pytest tests/ -v
 ```

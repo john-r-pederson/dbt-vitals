@@ -1,6 +1,11 @@
 import pytest
 import git
-from diff_engine import DiffEngine
+from diff_engine import DiffEngine, ModelChange
+
+
+def _paths(changes):
+    """Helper: extract old_path strings from a list of ModelChange objects."""
+    return [c.old_path for c in changes]
 
 
 def _init_repo(tmp_path):
@@ -64,18 +69,24 @@ def engine(repo):
 
 
 def test_deleted_sql_model_is_detected(engine):
-    deleted = engine.get_deleted_models(base_branch="main")
-    assert "models/staging/stg_users.sql" in deleted
+    changes = engine.get_deleted_models(base_branch="main")
+    assert "models/staging/stg_users.sql" in _paths(changes)
+
+
+def test_deleted_model_has_no_new_path(engine):
+    changes = engine.get_deleted_models(base_branch="main")
+    change = next(c for c in changes if c.old_path == "models/staging/stg_users.sql")
+    assert change.new_path is None
 
 
 def test_unchanged_model_is_not_returned(engine):
-    deleted = engine.get_deleted_models(base_branch="main")
-    assert "models/marts/fct_orders.sql" not in deleted
+    changes = engine.get_deleted_models(base_branch="main")
+    assert "models/marts/fct_orders.sql" not in _paths(changes)
 
 
 def test_non_sql_file_is_excluded(engine):
-    deleted = engine.get_deleted_models(base_branch="main")
-    assert not any(p.endswith(".py") for p in deleted)
+    changes = engine.get_deleted_models(base_branch="main")
+    assert not any(c.old_path.endswith(".py") for c in changes)
 
 
 def test_file_outside_models_dir_is_excluded(tmp_path):
@@ -97,10 +108,10 @@ def test_file_outside_models_dir_is_excluded(tmp_path):
     repo.index.remove(["seeds/seed.sql"])
     repo.index.commit("remove seed")
 
-    deleted = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(
         base_branch="main", target_dir="models/"
     )
-    assert deleted == []
+    assert changes == []
 
 
 def test_similarly_named_dir_is_not_matched(tmp_path):
@@ -118,10 +129,10 @@ def test_similarly_named_dir_is_not_matched(tmp_path):
     repo.index.remove(["foo_models/bar.sql"])
     repo.index.commit("remove bar")
 
-    deleted = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(
         base_branch="main", target_dir="models/"
     )
-    assert deleted == []
+    assert changes == []
 
 
 def test_renamed_model_is_detected(tmp_path):
@@ -140,22 +151,43 @@ def test_renamed_model_is_detected(tmp_path):
     repo.index.add(["models/new_name.sql"])
     repo.index.commit("rename model")
 
-    deleted = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
-    assert "models/old_name.sql" in deleted
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
+    assert "models/old_name.sql" in _paths(changes)
+
+
+def test_renamed_model_returns_new_path(tmp_path):
+    """A renamed model should expose the destination path via new_path."""
+    repo = _init_repo(tmp_path)
+
+    (tmp_path / "models").mkdir()
+    (tmp_path / "models" / "old_name.sql").write_text("select 1")
+    repo.index.add(["models/old_name.sql"])
+    repo.index.commit("initial")
+
+    branch = repo.create_head("feature/rename-model-new-path")
+    branch.checkout()
+    (tmp_path / "models" / "old_name.sql").rename(tmp_path / "models" / "new_name.sql")
+    repo.index.remove(["models/old_name.sql"])
+    repo.index.add(["models/new_name.sql"])
+    repo.index.commit("rename model")
+
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
+    change = next(c for c in changes if c.old_path == "models/old_name.sql")
+    assert change.new_path == "models/new_name.sql"
 
 
 def test_github_base_ref_env_var_takes_priority(engine, monkeypatch):
     """GITHUB_BASE_REF must override the base_branch argument."""
     monkeypatch.setenv("GITHUB_BASE_REF", "main")
-    deleted = engine.get_deleted_models(base_branch="nonexistent-branch-xyz")
-    assert "models/staging/stg_users.sql" in deleted
+    changes = engine.get_deleted_models(base_branch="nonexistent-branch-xyz")
+    assert "models/staging/stg_users.sql" in _paths(changes)
 
 
 def test_base_branch_used_when_env_var_absent(engine, monkeypatch):
     """Without GITHUB_BASE_REF, the explicit base_branch argument is used."""
     monkeypatch.delenv("GITHUB_BASE_REF", raising=False)
-    deleted = engine.get_deleted_models(base_branch="main")
-    assert "models/staging/stg_users.sql" in deleted
+    changes = engine.get_deleted_models(base_branch="main")
+    assert "models/staging/stg_users.sql" in _paths(changes)
 
 
 def test_no_deletions_returns_empty_list(tmp_path):
@@ -173,8 +205,46 @@ def test_no_deletions_returns_empty_list(tmp_path):
     repo.index.add(["models/new_model.sql"])
     repo.index.commit("add model")
 
-    deleted = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
-    assert deleted == []
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
+    assert changes == []
+
+
+def test_deleted_seed_csv_is_detected(tmp_path):
+    """A deleted .csv file in seeds/ should be detected alongside .sql models."""
+    repo = _init_repo(tmp_path)
+
+    (tmp_path / "seeds").mkdir()
+    (tmp_path / "seeds" / "ref_countries.csv").write_text("id,name\n1,US\n")
+    repo.index.add(["seeds/ref_countries.csv"])
+    repo.index.commit("initial")
+
+    branch = repo.create_head("feature/remove-seed")
+    branch.checkout()
+    (tmp_path / "seeds" / "ref_countries.csv").unlink()
+    repo.index.remove(["seeds/ref_countries.csv"])
+    repo.index.commit("remove seed")
+
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
+    assert "seeds/ref_countries.csv" in _paths(changes)
+
+
+def test_seed_outside_seeds_dir_not_detected(tmp_path):
+    """A .csv in a non-seeds directory must not be detected."""
+    repo = _init_repo(tmp_path)
+
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "extra.csv").write_text("x,y\n")
+    repo.index.add(["data/extra.csv"])
+    repo.index.commit("initial")
+
+    branch = repo.create_head("feature/remove-csv")
+    branch.checkout()
+    (tmp_path / "data" / "extra.csv").unlink()
+    repo.index.remove(["data/extra.csv"])
+    repo.index.commit("remove csv")
+
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
+    assert changes == []
 
 
 def test_invalid_repo_raises(tmp_path):
@@ -224,5 +294,5 @@ def test_falls_back_to_origin_prefix_when_local_branch_missing(tmp_path):
     assert "main" not in [h.name for h in clone_repo.heads]
     assert any(r.name == "origin/main" for r in clone_repo.remotes["origin"].refs)
 
-    deleted = DiffEngine(repo_path=str(clone_path)).get_deleted_models(base_branch="main")
-    assert "models/stg_users.sql" in deleted
+    changes = DiffEngine(repo_path=str(clone_path)).get_deleted_models(base_branch="main")
+    assert "models/stg_users.sql" in _paths(changes)

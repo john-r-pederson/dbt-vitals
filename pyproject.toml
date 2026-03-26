@@ -1,9 +1,17 @@
 [project]
-name = "isotrope"
+name = "dbt-vitals"
 version = "0.1.0"
-description = "Warehouse-agnostic dbt linter. Reports size and last-read stats for deleted models as a GitHub PR comment."
+description = "Warehouse impact report for deleted dbt models. Reports size, reads, and lineage as a GitHub PR comment."
 readme = "README.md"
 requires-python = ">=3.13"
+license = {text = "MIT"}
+authors = [
+    {name = "Laskr", email = "john@laskrconsulting.com"},
+]
+
+[project.urls]
+Repository = "https://github.com/Laskr/dbt-vitals"
+Homepage = "https://github.com/Laskr/dbt-vitals"
 dependencies = [
     "gitpython>=3.1.46",
     "pydantic-settings>=2.13.1",
