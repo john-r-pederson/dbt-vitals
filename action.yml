@@ -52,10 +52,18 @@ inputs:
     description: 'Directory to watch for deleted/renamed dbt models.'
     required: false
     default: 'models/'
+  seeds-dir:
+    description: 'Directory to watch for deleted/renamed dbt seed CSVs.'
+    required: false
+    default: 'seeds/'
   lookback-days:
     description: 'Number of days to look back in ACCESS_HISTORY for read counts. Default: 90.'
     required: false
     default: '90'
+  query-timeout-seconds:
+    description: 'Snowflake per-query timeout in seconds. Increase for orgs with large ACCESS_HISTORY.'
+    required: false
+    default: '60'
   repo-subdirectory:
     description: 'Subdirectory where dbt lives in a monorepo (e.g. "dbt"). Strips this prefix from git diff paths before manifest lookup.'
     required: false
@@ -87,7 +95,9 @@ runs:
     MANIFEST_PATH: ${{ inputs.manifest-path }}
     BASE_BRANCH: ${{ inputs.base-branch }}
     TARGET_DIR: ${{ inputs.target-dir }}
+    SEEDS_DIR: ${{ inputs.seeds-dir }}
     LOOKBACK_DAYS: ${{ inputs.lookback-days }}
+    QUERY_TIMEOUT_SECONDS: ${{ inputs.query-timeout-seconds }}
     REPO_SUBDIRECTORY: ${{ inputs.repo-subdirectory }}
     PR_TITLE: ${{ inputs.pr-title }}
     GITHUB_TOKEN: ${{ inputs.github-token }}

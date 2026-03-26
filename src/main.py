@@ -40,7 +40,11 @@ def run() -> None:
         current_branch = os.environ.get("GITHUB_HEAD_REF", "unknown")
 
     target_dir = cfg.TARGET_DIR
-    changes = diff.get_deleted_models(base_branch=cfg.BASE_BRANCH, target_dir=target_dir)
+    changes = diff.get_deleted_models(
+        base_branch=cfg.BASE_BRANCH,
+        target_dir=target_dir,
+        seeds_dir=cfg.SEEDS_DIR,
+    )
 
     if not changes:
         if current_branch == cfg.BASE_BRANCH:

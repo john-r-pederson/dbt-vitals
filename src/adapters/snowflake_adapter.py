@@ -22,9 +22,6 @@ _SAFE_IDENTIFIER = re.compile(r"^[A-Z0-9_$]+$")
 # Rejects anything else (spaces, dots, semicolons, etc.) which indicates user error.
 _HYPHENATED_IDENTIFIER = re.compile(r"^[A-Za-z0-9_$-]+$")
 
-# Kill any query that runs longer than this to prevent a hung CI job.
-_QUERY_TIMEOUT_SECONDS = 60
-
 
 def _format_date(value: Any) -> str | None:
     """Formats a datetime-like value to a clean YYYY-MM-DD string."""
@@ -62,6 +59,7 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
         self.ctx = None
         self.cursor = None
         self.lookback_days = cfg.LOOKBACK_DAYS
+        self.query_timeout = cfg.QUERY_TIMEOUT_SECONDS
 
         params = {
             "user": cfg.SNOWFLAKE_USER,
@@ -95,7 +93,7 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
             self.ctx = snowflake.connector.connect(**params)
             self.cursor = self.ctx.cursor()
             self.cursor.execute(
-                f"ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = {_QUERY_TIMEOUT_SECONDS}"
+                f"ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = {self.query_timeout}"
             )
             logger.info("Snowflake connection established.")
         except Exception as e:
