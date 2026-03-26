@@ -102,12 +102,12 @@ Go to **Settings → Secrets and variables → Actions** and add:
 ### 3. Grant the Snowflake role
 
 ```sql
-GRANT USAGE ON WAREHOUSE <wh>               TO ROLE dbt-vitals_ROLE;
-GRANT USAGE ON DATABASE <db>                TO ROLE dbt-vitals_ROLE;
-GRANT USAGE ON ALL SCHEMAS IN DATABASE <db> TO ROLE dbt-vitals_ROLE;
-GRANT REFERENCES ON ALL TABLES IN DATABASE <db> TO ROLE dbt-vitals_ROLE;
-GRANT REFERENCES ON FUTURE TABLES IN SCHEMA <db>.<schema> TO ROLE dbt-vitals_ROLE;
-GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE dbt-vitals_ROLE; -- for read-count data
+GRANT USAGE ON WAREHOUSE <wh>               TO ROLE DBT_VITALS_ROLE;
+GRANT USAGE ON DATABASE <db>                TO ROLE DBT_VITALS_ROLE;
+GRANT USAGE ON ALL SCHEMAS IN DATABASE <db> TO ROLE DBT_VITALS_ROLE;
+GRANT REFERENCES ON ALL TABLES IN DATABASE <db> TO ROLE DBT_VITALS_ROLE;
+GRANT REFERENCES ON FUTURE TABLES IN SCHEMA <db>.<schema> TO ROLE DBT_VITALS_ROLE;
+GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE DBT_VITALS_ROLE; -- for read-count data
 ```
 
 ---
@@ -229,11 +229,13 @@ Delete both key files from your filesystem immediately after — never commit th
 | `snowflake-warehouse` | | | Virtual warehouse name |
 | `snowflake-database` | | | Default database |
 | `snowflake-schema` | | | Default schema |
-| `snowflake-role` | | `dbt-vitals_ROLE` | Role for warehouse queries |
+| `snowflake-role` | | `DBT_VITALS_ROLE` | Role for warehouse queries |
 | `manifest-path` | | | Explicit path to `manifest.json`. Auto-discovered at `target/manifest.json` if not set. |
 | `base-branch` | | `main` | Branch to diff against. Defaults to `GITHUB_BASE_REF` (the PR target). |
-| `target-dir` | | `models/` | Directory to watch for deleted/renamed dbt models. |
+| `target-dir` | | `models/` | Directory (or comma-separated list) to watch for deleted/renamed dbt models. E.g. `models/,snapshots/` watches both. |
+| `seeds-dir` | | `seeds/` | Directory to watch for deleted/renamed seed CSVs. |
 | `lookback-days` | | `90` | Days to look back in `ACCESS_HISTORY` for read counts. |
+| `query-timeout-seconds` | | `60` | Per-query Snowflake timeout in seconds. Increase for orgs with large `ACCESS_HISTORY`. |
 | `repo-subdirectory` | | | Subdirectory where dbt lives in a monorepo (e.g. `dbt`). Strips this prefix from git diff paths before manifest lookup. |
 | `pr-title` | | | PR title. Used to detect `[skip dbt-vitals]` label. Pass `github.event.pull_request.title`. |
 | `github-token` | ✓ | | Use `secrets.GITHUB_TOKEN` |
@@ -291,14 +293,14 @@ Contributions welcome. See `src/adapters/base.py` for the adapter interface.
 
 ### What dbt-vitals detects
 
-dbt-vitals tracks **deletions and renames** in your configured `models/` and `seeds/` directories. Adding or modifying a file never triggers a report row.
+dbt-vitals tracks **deletions and renames** in your configured directories. Adding or modifying a file never triggers a report row.
 
 | File type | Detected by default | Notes |
 | :--- | :---: | :--- |
 | `.sql` files in `models/` | ✅ | Includes all subdirectories |
 | `.csv` files in `seeds/` | ✅ | Includes all subdirectories |
-| `.sql` files in `snapshots/` | ❌ | Set `target-dir: snapshots/` to watch snapshots instead of models — you cannot watch both directories simultaneously |
-| `.yml` schema files | ❌ | Deleting a YAML schema file does not delete a warehouse table |
+| `.sql` files in `snapshots/` | ❌ | Set `target-dir: models/,snapshots/` to watch both simultaneously |
+| `.yml`/`.yaml` schema files | ⚠️ | Reported only when the paired `.sql` model was **not** also deleted — signals that schema config was removed while the table still exists. Co-deletions and co-renames are suppressed (the `.sql` change is the primary signal). |
 
 ### Downstream dependents
 

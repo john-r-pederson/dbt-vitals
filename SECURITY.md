@@ -4,9 +4,9 @@
 
 | Version | Supported |
 | :------ | :-------- |
-| `main` (latest) | Yes |
+| `v0.1.x` (latest) | ✅ |
 
-dbt-vitals has not yet reached a stable release. Only the current `main` branch receives security fixes.
+Only the latest release receives security fixes.
 
 ## Reporting a Vulnerability
 

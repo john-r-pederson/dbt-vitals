@@ -1,4 +1,3 @@
-# src/manifest_engine.py
 import json
 import logging
 import os

@@ -42,7 +42,7 @@ jobs:
       #   run: |
       #     mkdir -p target
       #     curl -s -H "Authorization: Token ${{ secrets.DBT_CLOUD_API_TOKEN }}" \
-      #       "https://cloud.getdbt.com/api/v2/accounts/${{ secrets.DBT_ACCOUNT_ID }}/runs/latest/artifacts/manifest.json" \
+      #       "https://cloud.getdbt.com/api/v2/accounts/${{ secrets.DBT_ACCOUNT_ID }}/jobs/${{ secrets.DBT_CLOUD_JOB_ID }}/artifacts/manifest.json" \
       #       -o ./target/manifest.json
 
       # Option C: Manifest is committed to the repo (not recommended for large teams)
