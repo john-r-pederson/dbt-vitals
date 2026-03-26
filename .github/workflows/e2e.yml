@@ -1,0 +1,80 @@
+name: E2E
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches: [main]
+
+jobs:
+  e2e:
+    name: E2E Test
+    runs-on: ubuntu-latest
+    if: github.repository == 'Laskr/dbt-vitals'
+
+    steps:
+      - name: Checkout test branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          ref: test/e2e-scenarios
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
+
+      - name: Run dbt-vitals E2E
+        run: |
+          uv run python src/main.py > /tmp/e2e-output.txt 2>&1
+          cat /tmp/e2e-output.txt
+        env:
+          GITHUB_BASE_REF: main
+          MANIFEST_PATH: ./test-dbt-repo/target/manifest.json
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+          SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+
+      - name: Assert — happy path (table found in Snowflake)
+        run: |
+          grep -q "STG_USERS" /tmp/e2e-output.txt \
+            || { echo "FAIL: STG_USERS not found — happy path broken"; exit 1; }
+          echo "PASS: happy path"
+
+      - name: Assert — not in warehouse
+        run: |
+          grep -q "not in warehouse" /tmp/e2e-output.txt \
+            || { echo "FAIL: 'not in warehouse' message missing"; exit 1; }
+          echo "PASS: not-in-warehouse"
+
+      - name: Assert — not in manifest
+        run: |
+          grep -q "not in manifest" /tmp/e2e-output.txt \
+            || { echo "FAIL: 'not in manifest' message missing — stg_orphan not detected"; exit 1; }
+          echo "PASS: not-in-manifest"
+
+      - name: Assert — rename detected
+        run: |
+          grep -q "→" /tmp/e2e-output.txt \
+            || { echo "FAIL: rename arrow (→) missing — stg_customers rename not detected"; exit 1; }
+          echo "PASS: rename"
+
+      - name: Assert — seed detected
+        run: |
+          grep -q "ref_countries" /tmp/e2e-output.txt \
+            || { echo "FAIL: ref_countries seed missing from report"; exit 1; }
+          echo "PASS: seed"
+
+      - name: Assert — downstream dependents tracked
+        run: |
+          grep -q "fct_orders" /tmp/e2e-output.txt \
+            || { echo "FAIL: fct_orders missing — downstream dep tracking broken"; exit 1; }
+          echo "PASS: downstream deps"
+
+      - name: Assert — risk indicator present
+        run: |
+          grep -qP "🟡|🔴" /tmp/e2e-output.txt \
+            || { echo "FAIL: no risk indicator — stg_users has fct_orders as downstream dep, expected 🟡 or 🔴"; exit 1; }
+          echo "PASS: risk indicator"
