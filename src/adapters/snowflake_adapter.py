@@ -181,8 +181,12 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
             f"FROM {db}.INFORMATION_SCHEMA.TABLES "
             f"WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s"
         )
+        # Bind params are VALUES not identifiers — strip surrounding quotes if present.
+        # _validate_identifier may have added them for hyphenated names (e.g. '"prod-schema"').
+        schema_bind = schema.strip('"')
+        table_bind = table.strip('"')
         try:
-            self.cursor.execute(query, (schema, table))
+            self.cursor.execute(query, (schema_bind, table_bind))
             result = self.cursor.fetchone()
             if result:
                 bytes_val, last_altered, table_type = result
