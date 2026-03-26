@@ -42,6 +42,25 @@ def _report(**kwargs):
 
 
 # ---------------------------------------------------------------------------
+# ModelReport invariants
+# ---------------------------------------------------------------------------
+
+def test_model_report_rejects_exists_without_table_ref():
+    with pytest.raises(ValueError, match="table_ref"):
+        ModelReport(
+            file_path="models/stg_users.sql",
+            new_path=None,
+            table_ref=None,
+            exists=True,
+            table_type=None,
+            materialization=None,
+            size_gb=None,
+            last_altered=None,
+            last_read=None,
+        )
+
+
+# ---------------------------------------------------------------------------
 # build_markdown — structural
 # ---------------------------------------------------------------------------
 

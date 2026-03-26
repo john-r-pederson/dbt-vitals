@@ -247,3 +247,10 @@ def test_explicit_path_overrides_autodiscovery(tmp_path):
     }))
     eng = ManifestEngine(provided_path=str(custom))
     assert eng.get_table("models/m.sql") is not None
+
+
+def test_manifest_missing_nodes_key_raises(tmp_path):
+    bad = tmp_path / "manifest.json"
+    bad.write_text(json.dumps({"metadata": {}}))
+    with pytest.raises(ValueError, match="nodes"):
+        ManifestEngine(provided_path=str(bad))

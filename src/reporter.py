@@ -39,6 +39,10 @@ class ModelReport:
     downstream_names: list[str] = field(default_factory=list)
     query_error: bool = False    # True = INFORMATION_SCHEMA query failed (permissions); False = genuinely absent
 
+    def __post_init__(self) -> None:
+        if self.exists and self.table_ref is None:
+            raise ValueError("ModelReport cannot have exists=True with table_ref=None")
+
 
 class Reporter:
     """Builds and publishes the Warehouse Impact Report as a GitHub PR comment or stdout."""

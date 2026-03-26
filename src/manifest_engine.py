@@ -49,7 +49,12 @@ class ManifestEngine:
         # Build reverse dep map: {node_id -> [model_names_that_depend_on_it]}
         reverse_deps = defaultdict(list)
 
-        nodes = data.get("nodes", {})
+        nodes = data.get("nodes")
+        if nodes is None:
+            raise ValueError(
+                "manifest.json is missing the 'nodes' key. "
+                "This may not be a compiled manifest — run 'dbt compile' to generate one."
+            )
         for node_id, metadata in nodes.items():
             if metadata.get("resource_type") in ("model", "snapshot", "seed"):
                 file_path = metadata.get("original_file_path")
