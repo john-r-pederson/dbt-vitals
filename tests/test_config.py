@@ -141,3 +141,23 @@ def test_lookback_days_zero_raises(monkeypatch):
 def test_lookback_days_negative_raises(monkeypatch):
     with pytest.raises((ValidationError, ValueError)):
         _settings(monkeypatch, {"LOOKBACK_DAYS": "-5"})
+
+
+def test_query_timeout_default_is_60(monkeypatch):
+    cfg = _settings(monkeypatch, {})
+    assert cfg.QUERY_TIMEOUT_SECONDS == 60
+
+
+def test_seeds_dir_default(monkeypatch):
+    cfg = _settings(monkeypatch, {})
+    assert cfg.SEEDS_DIR == "seeds/"
+
+
+def test_query_timeout_custom_value(monkeypatch):
+    cfg = _settings(monkeypatch, {"QUERY_TIMEOUT_SECONDS": "120"})
+    assert cfg.QUERY_TIMEOUT_SECONDS == 120
+
+
+def test_seeds_dir_custom_value(monkeypatch):
+    cfg = _settings(monkeypatch, {"SEEDS_DIR": "data/seeds/"})
+    assert cfg.SEEDS_DIR == "data/seeds/"
