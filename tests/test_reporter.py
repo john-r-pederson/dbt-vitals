@@ -486,6 +486,13 @@ def test_transitive_deps_note_absent_when_no_dependents():
     assert "direct downstream" not in md.lower()
 
 
+def test_transitive_deps_note_uses_actual_model_name():
+    """The dbt ls hint in the transitive deps note uses the stem of the first model with dependents."""
+    r = _report(file_path="models/staging/stg_orders.sql", downstream_names=["fct_orders"])
+    md = _reporter().build_markdown([r])
+    assert "stg_orders+" in md
+
+
 # ---------------------------------------------------------------------------
 # Report truncation
 # ---------------------------------------------------------------------------

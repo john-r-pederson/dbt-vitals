@@ -74,7 +74,7 @@ def test_no_skip_label_proceeds_normally(mock_cfg):
     with patch("main.get_config", return_value=mock_cfg), \
          patch("main.DiffEngine") as MockDiff, \
          patch("main.ManifestEngine"), \
-         patch("main.get_adapter", return_value=mock_adapter), \
+         patch("main.get_adapter", return_value=mock_adapter) as MockGetAdapter, \
          patch("main.Reporter", return_value=mock_reporter):
 
         MockDiff.return_value.get_deleted_models.return_value = []
@@ -82,21 +82,22 @@ def test_no_skip_label_proceeds_normally(mock_cfg):
 
         main.run()
 
-    mock_adapter.close.assert_called_once()
+    # No models deleted — adapter should never be initialized
+    MockGetAdapter.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
 # No deleted models
 # ---------------------------------------------------------------------------
 
-def test_no_deleted_models_closes_adapter_and_skips_publish(mock_cfg):
+def test_no_deleted_models_skips_adapter_and_publish(mock_cfg):
     mock_adapter = MagicMock()
     mock_reporter = MagicMock()
 
     with patch("main.get_config", return_value=mock_cfg), \
          patch("main.DiffEngine") as MockDiff, \
          patch("main.ManifestEngine"), \
-         patch("main.get_adapter", return_value=mock_adapter), \
+         patch("main.get_adapter", return_value=mock_adapter) as MockGetAdapter, \
          patch("main.Reporter", return_value=mock_reporter):
 
         MockDiff.return_value.get_deleted_models.return_value = []
@@ -104,7 +105,8 @@ def test_no_deleted_models_closes_adapter_and_skips_publish(mock_cfg):
 
         main.run()
 
-    mock_adapter.close.assert_called_once()
+    # Adapter must not be initialized — no Snowflake connection for PRs with no deletions
+    MockGetAdapter.assert_not_called()
     mock_reporter.publish.assert_not_called()
 
 
@@ -382,3 +384,41 @@ def test_multiple_deleted_models_all_reported(mock_cfg):
     reports = mock_reporter.publish.call_args[0][0]
     assert len(reports) == 3
     assert {r.file_path for r in reports} == set(paths)
+
+
+# ---------------------------------------------------------------------------
+# YAML-only deletion: lookup_path used for manifest lookup
+# ---------------------------------------------------------------------------
+
+def test_yaml_deletion_uses_lookup_path_for_manifest(mock_cfg):
+    """A YAML-only change must look up the manifest via lookup_path (.sql), not old_path (.yml)."""
+    mock_adapter = MagicMock()
+    mock_adapter.get_table_stats.return_value = {
+        "exists": True, "size_gb": 0.5, "last_altered": "2026-01-01", "last_read": None,
+        "read_count": 0, "distinct_users": 0, "access_history_available": True, "table_type": "BASE TABLE",
+    }
+    mock_reporter = MagicMock()
+
+    yaml_change = ModelChange(
+        old_path="models/staging/stg_users.yml",
+        new_path=None,
+        lookup_path="models/staging/stg_users.sql",
+    )
+
+    with patch("main.get_config", return_value=mock_cfg), \
+         patch("main.DiffEngine") as MockDiff, \
+         patch("main.ManifestEngine") as MockManifest, \
+         patch("main.get_adapter", return_value=mock_adapter), \
+         patch("main.Reporter", return_value=mock_reporter):
+
+        MockDiff.return_value.get_deleted_models.return_value = [yaml_change]
+        MockDiff.return_value.repo.active_branch.name = "feature/test"
+        MockManifest.return_value.get_table.return_value = {
+            "database": "DB", "schema": "SCH", "name": "STG_USERS", "materialization": "table"
+        }
+        MockManifest.return_value.get_downstream_names.return_value = []
+
+        main.run()
+
+    # Manifest must be called with the .sql path, not the .yml path
+    MockManifest.return_value.get_table.assert_called_once_with("models/staging/stg_users.sql")

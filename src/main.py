@@ -24,7 +24,6 @@ def run() -> None:
     try:
         diff = DiffEngine(repo_path=".")
         manifest = ManifestEngine(provided_path=cfg.MANIFEST_PATH)
-        adapter = get_adapter(cfg)
     except FileNotFoundError as e:
         logger.error(f"FILESYSTEM ERROR: {e}")
         sys.exit(1)
@@ -51,18 +50,24 @@ def run() -> None:
             logger.info(f"Active branch is '{cfg.BASE_BRANCH}'. dbt-vitals checks feature branches.")
         else:
             logger.info(f"No deleted models detected between '{current_branch}' and '{cfg.BASE_BRANCH}'.")
-        adapter.close()
         return
 
     logger.info(f"Found {len(changes)} deleted/renamed model(s). Querying warehouse...")
+
+    try:
+        adapter = get_adapter(cfg)
+    except Exception as e:
+        logger.error(f"INITIALIZATION FAILED: {e}")
+        sys.exit(1)
 
     reports: list[ModelReport] = []
 
     try:
         for change in changes:
             try:
-                # Monorepo support: strip a repo subdirectory prefix before manifest lookup
-                lookup_path = change.old_path
+                # Monorepo support: strip a repo subdirectory prefix before manifest lookup.
+                # For YAML-only changes, lookup_path already points to the paired .sql path.
+                lookup_path = change.lookup_path or change.old_path
                 if cfg.REPO_SUBDIRECTORY:
                     prefix = cfg.REPO_SUBDIRECTORY.rstrip("/") + "/"
                     lookup_path = lookup_path.removeprefix(prefix)
