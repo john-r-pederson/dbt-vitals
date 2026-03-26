@@ -48,7 +48,7 @@ class Reporter:
         self.github_token = cfg.GITHUB_TOKEN
         self.github_repository = cfg.GITHUB_REPOSITORY
         self.pr_number = cfg.PR_NUMBER
-        self.lookback_days = getattr(cfg, "LOOKBACK_DAYS", 90)
+        self.lookback_days = cfg.LOOKBACK_DAYS
 
     def build_markdown(self, reports: list[ModelReport]) -> str:
         """Render a list of ModelReports into the full Markdown PR comment body."""

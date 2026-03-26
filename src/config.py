@@ -1,8 +1,7 @@
 import logging
 import sys
-from typing import Optional
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -21,23 +20,23 @@ class Settings(BaseSettings):
     SNOWFLAKE_ROLE: str = ""
 
     # --- Snowflake Auth (priority: key-pair > password > browser) ---
-    SNOWFLAKE_PRIVATE_KEY: Optional[str] = Field(default=None)
-    SNOWFLAKE_PRIVATE_KEY_PASSPHRASE: Optional[str] = Field(default=None)
-    SNOWFLAKE_PASSWORD: Optional[str] = Field(default=None)
-    SNOWFLAKE_HOST: Optional[str] = None
+    SNOWFLAKE_PRIVATE_KEY: str | None = None
+    SNOWFLAKE_PRIVATE_KEY_PASSPHRASE: str | None = None
+    SNOWFLAKE_PASSWORD: str | None = None
+    SNOWFLAKE_HOST: str | None = None
     SNOWFLAKE_AUTHENTICATOR: str = "externalbrowser"
 
     # --- GitHub (injected by GitHub Actions) ---
-    GITHUB_TOKEN: Optional[str] = None
-    GITHUB_REPOSITORY: Optional[str] = None  # "owner/repo"
-    PR_NUMBER: Optional[str] = None
+    GITHUB_TOKEN: str | None = None
+    GITHUB_REPOSITORY: str | None = None  # "owner/repo"
+    PR_NUMBER: str | None = None
 
     # --- dbt-vitals Behavior ---
     BASE_BRANCH: str = "main"
-    MANIFEST_PATH: Optional[str] = None
+    MANIFEST_PATH: str | None = None
     LOOKBACK_DAYS: int = 90
-    REPO_SUBDIRECTORY: Optional[str] = None   # e.g. "dbt" for monorepos
-    PR_TITLE: Optional[str] = None            # used for [skip dbt-vitals] check
+    REPO_SUBDIRECTORY: str | None = None   # e.g. "dbt" for monorepos
+    PR_TITLE: str | None = None            # used for [skip dbt-vitals] check
     TARGET_DIR: str = "models/"               # dbt models directory to watch
 
     model_config = SettingsConfigDict(
