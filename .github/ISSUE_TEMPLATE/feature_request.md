@@ -4,7 +4,7 @@ about: Suggest a new warehouse adapter or capability
 labels: enhancement
 ---
 
-**What would you like Isotrope to do?**
+**What would you like dbt-vitals to do?**
 A clear description of the feature or capability you're requesting.
 
 **Is this a new warehouse adapter?**
