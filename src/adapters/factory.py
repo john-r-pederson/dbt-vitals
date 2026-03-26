@@ -1,7 +1,9 @@
+from typing import Any
+
 from adapters.base import BaseWarehouseAdapter
 
 
-def get_adapter(cfg) -> BaseWarehouseAdapter:
+def get_adapter(cfg: Any) -> BaseWarehouseAdapter:
     """
     Returns the correct warehouse adapter based on WAREHOUSE_TYPE config.
     """

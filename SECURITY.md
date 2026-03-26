@@ -6,17 +6,17 @@
 | :------ | :-------- |
 | `main` (latest) | Yes |
 
-Isotrope has not yet reached a stable release. Only the current `main` branch receives security fixes.
+dbt-vitals has not yet reached a stable release. Only the current `main` branch receives security fixes.
 
 ## Reporting a Vulnerability
 
 **Do not file a public GitHub issue for security vulnerabilities.**
 
-Isotrope handles sensitive credentials (Snowflake private keys, GitHub tokens) and executes SQL against production warehouses. Please report vulnerabilities privately so they can be addressed before public disclosure.
+dbt-vitals handles sensitive credentials (Snowflake private keys, GitHub tokens) and executes SQL against production warehouses. Please report vulnerabilities privately so they can be addressed before public disclosure.
 
 **How to report:**
-1. Open a [GitHub Security Advisory](https://github.com/isotrope-ai/isotrope/security/advisories/new) (preferred — keeps the report confidential within GitHub)
-2. Or email **security@isotrope.ai** with the subject line `[SECURITY] <brief description>`
+1. Open a [GitHub Security Advisory](https://github.com/Laskr/dbt-vitals/security/advisories/new) (preferred — keeps the report confidential within GitHub)
+2. Or email **john@laskrconsulting.com** with the subject line `[SECURITY] <brief description>`
 
 Please include:
 - Description of the vulnerability and its potential impact

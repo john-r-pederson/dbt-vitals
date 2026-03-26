@@ -1,6 +1,6 @@
-# Isotrope — CLAUDE.md
+# dbt-vitals — CLAUDE.md
 
-Warehouse-agnostic dbt linter. Runs as a GitHub Action. When a PR deletes or renames a dbt model, Isotrope maps it to the production warehouse table via `manifest.json` and posts a "Vital Signs" report (size, last altered, last read) as a PR comment — before the table is gone.
+Warehouse-agnostic dbt linter. Runs as a GitHub Action. When a PR deletes or renames a dbt model, dbt-vitals maps it to the production warehouse table via `manifest.json` and posts a "Vital Signs" report (size, last altered, last read) as a PR comment — before the table is gone.
 
 ---
 
@@ -128,21 +128,21 @@ git checkout test/delete-stg-users
 uv run python src/main.py
 ```
 
-Expects manifest at `./test-dbt-repo/target/manifest.json` mapping `models/stg_users.sql` → `ISOTROPE_DB.ISOTROPE_STAGING.STG_USERS`.
+Expects manifest at `./test-dbt-repo/target/manifest.json` mapping `models/stg_users.sql` → `DBT_VITALS_DB.DBT_VITALS_STAGING.STG_USERS`.
 
 ---
 
 ## Snowflake Role Setup
 
-Minimum grants for `ISOTROPE_ROLE`:
+Minimum grants for `DBT_VITALS_ROLE`:
 
 ```sql
-GRANT USAGE ON WAREHOUSE <wh> TO ROLE ISOTROPE_ROLE;
-GRANT USAGE ON DATABASE <db> TO ROLE ISOTROPE_ROLE;
-GRANT USAGE ON ALL SCHEMAS IN DATABASE <db> TO ROLE ISOTROPE_ROLE;
-GRANT REFERENCES ON ALL TABLES IN DATABASE <db> TO ROLE ISOTROPE_ROLE;
-GRANT REFERENCES ON FUTURE TABLES IN SCHEMA <db>.<schema> TO ROLE ISOTROPE_ROLE;
-GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE ISOTROPE_ROLE;  -- for ACCESS_HISTORY
+GRANT USAGE ON WAREHOUSE <wh> TO ROLE DBT_VITALS_ROLE;
+GRANT USAGE ON DATABASE <db> TO ROLE DBT_VITALS_ROLE;
+GRANT USAGE ON ALL SCHEMAS IN DATABASE <db> TO ROLE DBT_VITALS_ROLE;
+GRANT REFERENCES ON ALL TABLES IN DATABASE <db> TO ROLE DBT_VITALS_ROLE;
+GRANT REFERENCES ON FUTURE TABLES IN SCHEMA <db>.<schema> TO ROLE DBT_VITALS_ROLE;
+GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE DBT_VITALS_ROLE;  -- for ACCESS_HISTORY
 ```
 
 ---
