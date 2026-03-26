@@ -2,7 +2,7 @@
 
 **dbt-vitals** is a GitHub Action that protects your data warehouse from silent table drops.
 
-When a pull request deletes or renames a dbt model, dbt-vitals maps the file to its production warehouse table via `manifest.json`, queries live metadata (size, last altered, read count, distinct users), and posts a **Vital Signs** report as a PR comment — before the table is gone.
+When a pull request deletes or renames a dbt model, dbt-vitals maps the file to its production warehouse table via `manifest.json`, queries Snowflake for live stats (size, last altered, read count, distinct users), and posts a **Warehouse Impact Report** as a PR comment — before the table is gone.
 
 ```
 ## 🔍 dbt-vitals: Warehouse Impact Report
@@ -188,6 +188,7 @@ dbt-vitals will exit cleanly without connecting to Snowflake or posting a commen
 | `_(no ACCESS_HISTORY grant)_` in Reads column | Role lacks IMPORTED PRIVILEGES | `GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE ...` |
 | `fetch-depth: 0` missing from checkout step | Shallow clone, diff fails | Add `fetch-depth: 0` to the `actions/checkout@v4` step |
 | Manifest staleness warning in logs | manifest.json is >24h old | Re-run `dbt compile` or refresh your manifest download step |
+| Action doesn't run on YAML-only schema file deletions | Workflow `paths` filter doesn't include `.yml` | Add `models/**/*.yml` and `models/**/*.yaml` to the `paths` filter |
 
 ---
 
@@ -272,11 +273,25 @@ uv run python src/main.py
 uv run pytest tests/ -v
 ```
 
-Requires a `.env` file with Snowflake credentials. See `CLAUDE.md` for the full variable list.
+Requires a `.env` file with Snowflake credentials. Copy `.env.example` and fill in your values.
 
 ---
 
-## Supported warehouses
+## Roadmap
+
+### Transitive dependencies
+
+The **dbt Dependents** column shows only direct dependents — one hop from the deleted model. A model with downstream consumers several hops away will not appear unless they also directly reference the deleted model.
+
+Full DAG traversal is planned for v0.2. In the meantime, run `dbt ls --select <model>+` to see the complete downstream lineage.
+
+### Non-dbt consumers
+
+dbt-vitals cannot see consumers outside the dbt graph. Tableau workbooks, Looker explores, Jupyter notebooks, Airflow DAGs, reverse ETL pipelines (Census, Hightouch), and ad-hoc analyst SQL are all invisible to it.
+
+The `ACCESS_HISTORY` read count is the closest proxy. If a table shows 318 reads from 12 distinct users over 90 days, something is consuming it — even if you can't identify what. That's the signal: don't drop this without investigating.
+
+### Additional adapters
 
 | Warehouse | Status |
 | :--- | :--- |
@@ -285,7 +300,7 @@ Requires a `.env` file with Snowflake credentials. See `CLAUDE.md` for the full 
 | Redshift | Planned |
 | Databricks | Planned |
 
-Contributions welcome. See `src/adapters/base.py` for the adapter interface.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the adapter interface and contribution guide.
 
 ---
 
@@ -300,15 +315,11 @@ dbt-vitals tracks **deletions and renames** in your configured directories. Addi
 | `.sql` files in `models/` | ✅ | Includes all subdirectories |
 | `.csv` files in `seeds/` | ✅ | Includes all subdirectories |
 | `.sql` files in `snapshots/` | ❌ | Set `target-dir: models/,snapshots/` to watch both simultaneously |
-| `.yml`/`.yaml` schema files | ⚠️ | Reported only when the paired `.sql` model was **not** also deleted — signals that schema config was removed while the table still exists. Co-deletions and co-renames are suppressed (the `.sql` change is the primary signal). |
+| `.yml`/`.yaml` schema files | ⚠️ | Reported when the paired `.sql` still exists — schema config was removed while the table is live. Co-deleted or co-renamed pairs report the `.sql` change only. Add `models/**/*.yml` to the workflow `paths` filter to catch YAML-only deletions. |
 
 ### Downstream dependents
 
-The **dbt Dependents** column lists models that **directly** depend on the deleted model, as recorded in `manifest.json`. Transitive dependents — models that depend on those dependents — are not shown.
-
-**Example:** If `stg_users` → `fct_orders` → `rpt_revenue`, deleting `stg_users` shows `fct_orders` in the report. `rpt_revenue` does not appear. Run `dbt ls --select <model>+` to see the full downstream lineage.
-
-dbt tests, metrics, and exposures that reference the deleted model are also not listed.
+The **dbt Dependents** column shows only **direct** dependents. If `stg_users → fct_orders → rpt_revenue`, deleting `stg_users` shows `fct_orders` only. dbt tests, metrics, and exposures are not listed either. See [Roadmap](#roadmap) for transitive dependency tracking.
 
 ### Warehouse visibility (Snowflake)
 
