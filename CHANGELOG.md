@@ -3,6 +3,22 @@
 All notable changes will be documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+- **YAML/schema file deletion detection** — standalone `.yml`/`.yaml` deletions are now reported when the paired `.sql` model still exists (signals schema config was removed while the table is live). Co-deletions and co-renames with the paired `.sql` are suppressed to avoid duplicate rows.
+- **Multi-path `target-dir`** — accepts a comma-separated list of directories (e.g. `models/,snapshots/`) to watch simultaneously. Models and snapshots can now both be tracked in one run.
+- **Adapter init guard** — the Snowflake connection is deferred until after the no-changes early return; PRs that only add or modify files never open a warehouse connection.
+
+### Fixed
+
+- YAML-only changes and seeds/snapshots in monorepos now resolve manifest lookups via `lookup_path` (the paired `.sql` path) rather than the raw diff path.
+- `dbt ls` lineage hint in the report footer now shows the actual model stem (e.g. `stg_orders+`) instead of the placeholder `<model>+`.
+- Omitted model paths are now logged to stdout when the report is truncated to fit GitHub's comment limit.
+
+---
+
 ## [0.1.0] — 2026-03-25
 
 ### Added

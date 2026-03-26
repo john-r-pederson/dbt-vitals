@@ -78,7 +78,6 @@ class Settings(BaseSettings):
                     "dbt-vitals requires the org-account format, e.g. 'acme-abc12345'. "
                     "Find it at: app.snowflake.com → Admin → Accounts → copy the account identifier."
                 )
-        # TODO: add BigQuery credential validation here
         return self
 
 

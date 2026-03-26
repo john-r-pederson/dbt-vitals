@@ -54,7 +54,17 @@ class MyWarehouseAdapter(BaseWarehouseAdapter):
 
     def get_table_stats(self, db: str, schema: str, table: str) -> dict:
         # Must return:
-        # {"exists": bool, "size_gb": float, "last_altered": str|None, "last_read": str|None}
+        # {
+        #     "exists": bool,
+        #     "size_gb": float | None,           # None for views (no storage)
+        #     "last_altered": str | None,        # YYYY-MM-DD
+        #     "last_read": str | None,           # YYYY-MM-DD, None if no reads in lookback
+        #     "read_count": int,
+        #     "distinct_users": int,
+        #     "access_history_available": bool,  # False if role lacks IMPORTED PRIVILEGES
+        #     "table_type": str | None,          # "BASE TABLE", "VIEW", etc.
+        #     "query_error": bool,               # True = permissions error, not absence
+        # }
         ...
 
     def close(self) -> None:
