@@ -61,7 +61,7 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
         """Open a Snowflake connection using key-pair, password, or browser auth based on available credentials."""
         self.ctx = None
         self.cursor = None
-        self.lookback_days = getattr(cfg, "LOOKBACK_DAYS", 90)
+        self.lookback_days = cfg.LOOKBACK_DAYS
 
         params = {
             "user": cfg.SNOWFLAKE_USER,
