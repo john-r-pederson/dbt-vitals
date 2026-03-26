@@ -1,10 +1,10 @@
 {
     "nodes": {
-        "model.isotrope_test.stg_users": {
+        "model.dbt_vitals_test.stg_users": {
             "resource_type": "model",
             "original_file_path": "models/stg_users.sql",
-            "database": "ISOTROPE_DB",
-            "schema": "ISOTROPE_STAGING",
+            "database": "DBT_VITALS_DB",
+            "schema": "DBT_VITALS_STAGING",
             "name": "stg_users",
             "alias": "STG_USERS"
         }
