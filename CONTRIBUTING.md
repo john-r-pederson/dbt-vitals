@@ -2,6 +2,8 @@
 
 Thanks for your interest in contributing. This document covers dev setup, the adapter architecture, and how to submit a PR.
 
+Please note that this project follows a [Code of Conduct](CODE_OF_CONDUCT.md). By participating you agree to abide by its terms.
+
 ---
 
 ## Dev setup

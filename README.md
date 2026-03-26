@@ -1,5 +1,7 @@
 # dbt-vitals
 
+[![CI](https://github.com/Laskr/dbt-vitals/actions/workflows/ci.yml/badge.svg)](https://github.com/Laskr/dbt-vitals/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **dbt-vitals** is a GitHub Action that protects your data warehouse from silent table drops.
 
 When a pull request deletes or renames a dbt model, dbt-vitals maps the file to its production warehouse table via `manifest.json`, queries Snowflake for live stats (size, last altered, read count, distinct users), and posts a **Warehouse Impact Report** as a PR comment — before the table is gone.
