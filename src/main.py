@@ -2,18 +2,18 @@ import logging
 import os
 import sys
 
-logging.basicConfig(level=logging.INFO, format="%(message)s")
-logger = logging.getLogger(__name__)
-
+from adapters.factory import get_adapter
 from config import get_config
 from diff_engine import DiffEngine
 from manifest_engine import ManifestEngine
-from adapters.factory import get_adapter
-from reporter import Reporter, ModelReport
+from reporter import ModelReport, Reporter
+
+logger = logging.getLogger(__name__)
 
 
 def run() -> None:
     """Entry point: diffs HEAD against base branch, queries warehouse stats for each deleted model, and posts a PR comment."""
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     cfg = get_config()
 
     # Allow users to suppress the report by adding [skip dbt-vitals] to the PR title.

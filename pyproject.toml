@@ -22,8 +22,19 @@ Homepage = "https://github.com/Laskr/dbt-vitals"
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "ruff>=0.9",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E501",  # line too long — enforced by formatter, not linter
+]

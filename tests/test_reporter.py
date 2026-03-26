@@ -1,10 +1,20 @@
 import json
-import pytest
-from unittest.mock import MagicMock, patch
-from io import BytesIO
 from http.client import HTTPMessage
+from unittest.mock import MagicMock, patch
 
-from reporter import Reporter, ModelReport, _COMMENT_TAG, _parse_next_link, _risk_indicator, _format_size, _TOOL_URL, _escape_md, _GITHUB_COMMENT_MAX_CHARS
+import pytest
+
+from reporter import (
+    _COMMENT_TAG,
+    _GITHUB_COMMENT_MAX_CHARS,
+    _TOOL_URL,
+    ModelReport,
+    Reporter,
+    _escape_md,
+    _format_size,
+    _parse_next_link,
+    _risk_indicator,
+)
 
 
 def _make_cfg(github_token=None, github_repository=None, pr_number=None, lookback_days=90):
