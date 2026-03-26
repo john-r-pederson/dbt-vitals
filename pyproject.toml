@@ -8,16 +8,16 @@ license = {text = "MIT"}
 authors = [
     {name = "Laskr", email = "john@laskrconsulting.com"},
 ]
-
-[project.urls]
-Repository = "https://github.com/Laskr/dbt-vitals"
-Homepage = "https://github.com/Laskr/dbt-vitals"
 dependencies = [
     "gitpython>=3.1.46",
     "pydantic-settings>=2.13.1",
     "python-dotenv>=1.2.2",
     "snowflake-connector-python[secure-local-storage]>=4.3.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/Laskr/dbt-vitals"
+Homepage = "https://github.com/Laskr/dbt-vitals"
 
 [dependency-groups]
 dev = [

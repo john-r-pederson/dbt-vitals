@@ -1,11 +1,11 @@
-# Isotrope
+# dbt-vitals
 
-**Isotrope** is a GitHub Action that protects your data warehouse from silent table drops.
+**dbt-vitals** is a GitHub Action that protects your data warehouse from silent table drops.
 
-When a pull request deletes or renames a dbt model, Isotrope maps the file to its production warehouse table via `manifest.json`, queries live metadata (size, last altered, read count, distinct users), and posts a **Vital Signs** report as a PR comment — before the table is gone.
+When a pull request deletes or renames a dbt model, dbt-vitals maps the file to its production warehouse table via `manifest.json`, queries live metadata (size, last altered, read count, distinct users), and posts a **Vital Signs** report as a PR comment — before the table is gone.
 
 ```
-## 🔍 Isotrope: Warehouse Impact Report
+## 🔍 dbt-vitals: Warehouse Impact Report
 
 > **2 model(s) deleted or renamed in this PR.** Review before merging.
 
@@ -23,7 +23,7 @@ When a pull request deletes or renames a dbt model, Isotrope maps the file to it
 
 ## How it works
 
-1. On every PR that touches `models/**/*.sql`, `snapshots/**/*.sql`, or `seeds/**/*.csv`, Isotrope runs inside a Docker container on GitHub-hosted runners.
+1. On every PR that touches `models/**/*.sql`, `snapshots/**/*.sql`, or `seeds/**/*.csv`, dbt-vitals runs inside a Docker container on GitHub-hosted runners.
 2. It diffs HEAD against your base branch to find deleted or renamed files.
 3. It looks up each file in your dbt `manifest.json` to get the fully-qualified warehouse table name.
 4. It queries `INFORMATION_SCHEMA.TABLES` for size, type, and last-altered timestamp, and `ACCOUNT_USAGE.ACCESS_HISTORY` for read counts and distinct users.
@@ -35,10 +35,10 @@ When a pull request deletes or renames a dbt model, Isotrope maps the file to it
 
 ### 1. Add the workflow
 
-Create `.github/workflows/isotrope.yml` in your dbt repo:
+Create `.github/workflows/dbt-vitals.yml` in your dbt repo:
 
 ```yaml
-name: Isotrope
+name: dbt-vitals
 
 on:
   pull_request:
@@ -49,7 +49,7 @@ on:
       - 'seeds/**/*.csv'
 
 jobs:
-  isotrope:
+  dbt-vitals:
     name: Warehouse Impact Report
     runs-on: ubuntu-latest
     permissions:
@@ -65,8 +65,8 @@ jobs:
       # Download your production manifest.json before this step.
       # See "Manifest setup" below.
 
-      - name: Run Isotrope
-        uses: isotrope-ai/isotrope@v0.1.0
+      - name: Run dbt-vitals
+        uses: Laskr/dbt-vitals@v0.1.0
         with:
           warehouse-type: snowflake
           snowflake-account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
@@ -102,21 +102,21 @@ Go to **Settings → Secrets and variables → Actions** and add:
 ### 3. Grant the Snowflake role
 
 ```sql
-GRANT USAGE ON WAREHOUSE <wh>               TO ROLE ISOTROPE_ROLE;
-GRANT USAGE ON DATABASE <db>                TO ROLE ISOTROPE_ROLE;
-GRANT USAGE ON ALL SCHEMAS IN DATABASE <db> TO ROLE ISOTROPE_ROLE;
-GRANT REFERENCES ON ALL TABLES IN DATABASE <db> TO ROLE ISOTROPE_ROLE;
-GRANT REFERENCES ON FUTURE TABLES IN SCHEMA <db>.<schema> TO ROLE ISOTROPE_ROLE;
-GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE ISOTROPE_ROLE; -- for read-count data
+GRANT USAGE ON WAREHOUSE <wh>               TO ROLE dbt-vitals_ROLE;
+GRANT USAGE ON DATABASE <db>                TO ROLE dbt-vitals_ROLE;
+GRANT USAGE ON ALL SCHEMAS IN DATABASE <db> TO ROLE dbt-vitals_ROLE;
+GRANT REFERENCES ON ALL TABLES IN DATABASE <db> TO ROLE dbt-vitals_ROLE;
+GRANT REFERENCES ON FUTURE TABLES IN SCHEMA <db>.<schema> TO ROLE dbt-vitals_ROLE;
+GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE dbt-vitals_ROLE; -- for read-count data
 ```
 
 ---
 
 ## Manifest setup
 
-Isotrope needs your **production** `manifest.json` to map deleted model files to their warehouse tables. The manifest format is identical whether you use dbt Core or dbt Cloud — the difference is just how you get it into the workflow.
+dbt-vitals needs your **production** `manifest.json` to map deleted model files to their warehouse tables. The manifest format is identical whether you use dbt Core or dbt Cloud — the difference is just how you get it into the workflow.
 
-Add a step **before** "Run Isotrope" to make it available. Pick the option that matches your setup:
+Add a step **before** "Run dbt-vitals" to make it available. Pick the option that matches your setup:
 
 **Option A — dbt Core: run `dbt compile` in CI**
 ```yaml
@@ -157,19 +157,19 @@ Add a step **before** "Run Isotrope" to make it available. Pick the option that 
 ```
 
 **Option E — Committed to repo** (not recommended for production)
-No step needed. Isotrope auto-discovers `target/manifest.json` from the repo root.
+No step needed. dbt-vitals auto-discovers `target/manifest.json` from the repo root.
 
 ---
 
 ## Escape hatch
 
-Add `[skip isotrope]` anywhere in your PR title to suppress the warehouse check:
+Add `[skip dbt-vitals]` anywhere in your PR title to suppress the warehouse check:
 
 ```
-refactor: remove deprecated models [skip isotrope]
+refactor: remove deprecated models [skip dbt-vitals]
 ```
 
-Isotrope will exit cleanly without connecting to Snowflake or posting a comment. Case-insensitive.
+dbt-vitals will exit cleanly without connecting to Snowflake or posting a comment. Case-insensitive.
 
 ---
 
@@ -193,7 +193,7 @@ Isotrope will exit cleanly without connecting to Snowflake or posting a comment.
 
 ## Authentication
 
-Isotrope uses key-pair RSA authentication for headless CI — no MFA prompt, no browser.
+dbt-vitals uses key-pair RSA authentication for headless CI — no MFA prompt, no browser.
 
 **Generate a key pair:**
 ```bash
@@ -229,13 +229,13 @@ Delete both key files from your filesystem immediately after — never commit th
 | `snowflake-warehouse` | | | Virtual warehouse name |
 | `snowflake-database` | | | Default database |
 | `snowflake-schema` | | | Default schema |
-| `snowflake-role` | | `ISOTROPE_ROLE` | Role for warehouse queries |
+| `snowflake-role` | | `dbt-vitals_ROLE` | Role for warehouse queries |
 | `manifest-path` | | | Explicit path to `manifest.json`. Auto-discovered at `target/manifest.json` if not set. |
 | `base-branch` | | `main` | Branch to diff against. Defaults to `GITHUB_BASE_REF` (the PR target). |
 | `target-dir` | | `models/` | Directory to watch for deleted/renamed dbt models. |
 | `lookback-days` | | `90` | Days to look back in `ACCESS_HISTORY` for read counts. |
 | `repo-subdirectory` | | | Subdirectory where dbt lives in a monorepo (e.g. `dbt`). Strips this prefix from git diff paths before manifest lookup. |
-| `pr-title` | | | PR title. Used to detect `[skip isotrope]` label. Pass `github.event.pull_request.title`. |
+| `pr-title` | | | PR title. Used to detect `[skip dbt-vitals]` label. Pass `github.event.pull_request.title`. |
 | `github-token` | ✓ | | Use `secrets.GITHUB_TOKEN` |
 | `pr-number` | | | Pass `github.event.pull_request.number` |
 

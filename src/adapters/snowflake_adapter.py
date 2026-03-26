@@ -244,9 +244,11 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
             return {"last_read": None, "read_count": 0, "distinct_users": 0, "available": False}
 
     def close(self) -> None:
-        """Close the Snowflake cursor and connection."""
+        """Close the Snowflake cursor and connection. Safe to call more than once."""
         if self.cursor:
             self.cursor.close()
+            self.cursor = None
         if self.ctx:
             self.ctx.close()
+            self.ctx = None
         logger.info("Snowflake connection closed.")

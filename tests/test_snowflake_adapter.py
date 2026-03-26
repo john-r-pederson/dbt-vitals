@@ -255,8 +255,8 @@ def test_query_table_metadata_strips_quotes_from_hyphenated_bind_params():
     cursor.fetchone.return_value = None
     adapter.cursor = cursor
     adapter._query_table_metadata('"MYDB"', '"prod-schema"', '"fact-orders"')
-    _, call_args = cursor.execute.call_args
-    assert call_args == ("prod-schema", "fact-orders")
+    (_, bind_params), _ = cursor.execute.call_args
+    assert bind_params == ("prod-schema", "fact-orders")
 
 
 # ---------------------------------------------------------------------------
@@ -351,3 +351,15 @@ def test_access_history_query_returns_nonzero_for_view_domain():
     assert result["read_count"] == 7
     assert result["distinct_users"] == 2
     assert result["available"] is True
+
+
+def test_close_is_idempotent():
+    """Calling close() twice must not raise — cursor/ctx are nulled after first close."""
+    adapter = SnowflakeAdapter.__new__(SnowflakeAdapter)
+    adapter.cursor = MagicMock()
+    adapter.ctx = MagicMock()
+    adapter.close()
+    assert adapter.cursor is None
+    assert adapter.ctx is None
+    # Second call — no AttributeError on already-closed cursor
+    adapter.close()

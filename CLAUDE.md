@@ -171,7 +171,7 @@ Triggered on `pull_request` when `models/**/*.sql` changes. Requires these GitHu
 
 `GITHUB_TOKEN` is provided automatically — do not add as a secret.
 
-Workflow file: `.github/workflows/isotrope.yml`
+Workflow file: `.github/workflows/dbt-vitals.yml`
 Action definition: `action.yml`
 Container: `Dockerfile`
 

@@ -1,8 +1,9 @@
 .history
-ISOTROPE_BLUEPRINT.md
 .venv/
 .env
 __pycache__/
+.pytest_cache/
+.vscode/
 /target/
 # Test fixture manifests are intentionally tracked
 !/test-dbt-repo/target/
