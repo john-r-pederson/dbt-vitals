@@ -284,3 +284,48 @@ Requires a `.env` file with Snowflake credentials. See `CLAUDE.md` for the full 
 | Databricks | Planned |
 
 Contributions welcome. See `src/adapters/base.py` for the adapter interface.
+
+---
+
+## Scope & limitations
+
+### What dbt-vitals detects
+
+dbt-vitals tracks **deletions and renames** in your configured `models/` and `seeds/` directories. Adding or modifying a file never triggers a report row.
+
+| File type | Detected by default | Notes |
+| :--- | :---: | :--- |
+| `.sql` files in `models/` | ✅ | Includes all subdirectories |
+| `.csv` files in `seeds/` | ✅ | Includes all subdirectories |
+| `.sql` files in `snapshots/` | ❌ | Set `target-dir: snapshots/` to watch snapshots instead of models — you cannot watch both directories simultaneously |
+| `.yml` schema files | ❌ | Deleting a YAML schema file does not delete a warehouse table |
+
+### Downstream dependents
+
+The **dbt Dependents** column lists models that **directly** depend on the deleted model, as recorded in `manifest.json`. Transitive dependents — models that depend on those dependents — are not shown.
+
+**Example:** If `stg_users` → `fct_orders` → `rpt_revenue`, deleting `stg_users` shows `fct_orders` in the report. `rpt_revenue` does not appear. Run `dbt ls --select <model>+` to see the full downstream lineage.
+
+dbt tests, metrics, and exposures that reference the deleted model are also not listed.
+
+### Warehouse visibility (Snowflake)
+
+| Scenario | Behavior |
+| :--- | :--- |
+| Table exists, role has `REFERENCES` | Size, type, and last-altered timestamp reported |
+| Table exists, role lacks `REFERENCES` | _(query error — check role grants)_ |
+| Table exists, role lacks `IMPORTED PRIVILEGES` | Size and last-altered reported; Reads column shows _(no ACCESS_HISTORY grant)_ |
+| Table not found | _(not in warehouse)_ — already dropped, or in a different database than the manifest specifies |
+| External tables | May not appear in `INFORMATION_SCHEMA.TABLES` on some Snowflake account configurations |
+
+### Read count freshness
+
+Snowflake's `ACCOUNT_USAGE.ACCESS_HISTORY` has **approximately 3 hours of latency**. Read counts reflect queries run up to ~3 hours before the report was generated. A table showing `0` recent reads may still have been read within the last few hours.
+
+### Manifest freshness
+
+dbt-vitals logs a warning if `manifest.json` is more than 24 hours old. A stale manifest may map deleted files to incorrect warehouse tables if schemas, aliases, or databases have changed since the last `dbt compile`.
+
+### Report size
+
+If a PR deletes a very large number of models simultaneously, the report is truncated to stay within GitHub's 65,536-character comment limit. The Action logs always contain the full list.

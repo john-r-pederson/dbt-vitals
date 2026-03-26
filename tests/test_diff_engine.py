@@ -252,6 +252,21 @@ def test_invalid_repo_raises(tmp_path):
         DiffEngine(repo_path=str(tmp_path))
 
 
+def test_empty_repo_returns_empty_list(tmp_path):
+    """A repo with no commits should return [] gracefully rather than raising."""
+    _init_repo(tmp_path)  # initialises the repo but makes no commits
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
+    assert changes == []
+
+
+def test_missing_base_branch_raises(tmp_path):
+    """When neither the bare branch nor origin/<branch> exist, raise a descriptive error."""
+    _make_repo(tmp_path)  # local-only repo — no remote, no origin/
+    engine = DiffEngine(repo_path=str(tmp_path))
+    with pytest.raises(Exception, match="not found"):
+        engine.get_deleted_models(base_branch="nonexistent-branch-xyz")
+
+
 def test_falls_back_to_origin_prefix_when_local_branch_missing(tmp_path):
     """
     In GitHub Actions, checkout@v4 does not create a local branch for the base

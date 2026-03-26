@@ -1,7 +1,10 @@
+import logging
 import os
 from dataclasses import dataclass
 
 import git
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -53,9 +56,22 @@ class DiffEngine:
         # the base ref — only origin/<base> exists. Try the bare name first;
         # if git cannot resolve it, fall back to origin/<base>.
         try:
-            diff_index = self.repo.head.commit.diff(effective_base, R=True)
+            head = self.repo.head.commit
+        except ValueError:
+            logger.warning("Repository has no commits — nothing to diff.")
+            return []
+
+        try:
+            diff_index = head.diff(effective_base, R=True)
         except git.GitCommandError:
-            diff_index = self.repo.head.commit.diff(f"origin/{effective_base}", R=True)
+            try:
+                diff_index = head.diff(f"origin/{effective_base}", R=True)
+            except git.GitCommandError:
+                raise Exception(
+                    f"Base branch '{effective_base}' not found locally or as "
+                    f"'origin/{effective_base}'. "
+                    "Verify BASE_BRANCH or GITHUB_BASE_REF is set correctly."
+                )
 
         deleted_files = []
         for diff in diff_index:
