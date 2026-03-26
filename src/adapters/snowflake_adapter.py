@@ -151,12 +151,7 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
                 "query_error": query_error,
             }
 
-        # Strip surrounding quotes for the ACCESS_HISTORY bind parameter — Snowflake
-        # stores object names without surrounding quotes in ACCOUNT_USAGE.
-        db_plain = db_u.strip('"')
-        schema_plain = schema_u.strip('"')
-        table_plain = table_u.strip('"')
-        access_stats = self._query_last_read(db_plain, schema_plain, table_plain)
+        access_stats = self._query_last_read(db_u, schema_u, table_u)
 
         return {
             "exists": True,
@@ -183,7 +178,7 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
         query = (
             f"SELECT BYTES, LAST_ALTERED, TABLE_TYPE "
             f"FROM {db}.INFORMATION_SCHEMA.TABLES "
-            f"WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s"
+            f"WHERE UPPER(TABLE_SCHEMA) = UPPER(%s) AND UPPER(TABLE_NAME) = UPPER(%s)"
         )
         # Bind params are VALUES not identifiers — strip surrounding quotes if present.
         # _validate_identifier may have added them for hyphenated names (e.g. '"prod-schema"').
@@ -219,9 +214,9 @@ class SnowflakeAdapter(BaseWarehouseAdapter):
         Degrades gracefully when unavailable.
         """
         # objectName in ACCESS_HISTORY is stored without surrounding quotes.
-        # Always uppercase the composed name so the UPPER() comparison matches
-        # even when components contain hyphens (stored lowercase in db_plain).
-        full_name = f"{db}.{schema}.{table}".upper()
+        # Strip any quotes _validate_identifier added for hyphenated identifiers,
+        # then uppercase so the UPPER() comparison matches regardless of source casing.
+        full_name = f"{db.strip('\"')}.{schema.strip('\"')}.{table.strip('\"')}".upper()
         query = """
             SELECT
                 MAX(query_start_time),
