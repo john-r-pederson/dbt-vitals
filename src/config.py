@@ -37,7 +37,9 @@ class Settings(BaseSettings):
     LOOKBACK_DAYS: int = 90
     REPO_SUBDIRECTORY: str | None = None   # e.g. "dbt" for monorepos
     PR_TITLE: str | None = None            # used for [skip dbt-vitals] check
-    TARGET_DIR: str = "models/"               # dbt models directory to watch
+    TARGET_DIR: str = "models/"            # dbt models directory to watch
+    SEEDS_DIR: str = "seeds/"             # dbt seeds directory to watch for deleted CSVs
+    QUERY_TIMEOUT_SECONDS: int = 60       # per-query Snowflake timeout; increase for large ACCESS_HISTORY
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
