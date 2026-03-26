@@ -35,11 +35,13 @@ class Settings(BaseSettings):
     BASE_BRANCH: str = "main"
     MANIFEST_PATH: str | None = None
     LOOKBACK_DAYS: int = 90
-    REPO_SUBDIRECTORY: str | None = None   # e.g. "dbt" for monorepos
-    PR_TITLE: str | None = None            # used for [skip dbt-vitals] check
-    TARGET_DIR: str = "models/"            # dbt models directory to watch
-    SEEDS_DIR: str = "seeds/"             # dbt seeds directory to watch for deleted CSVs
-    QUERY_TIMEOUT_SECONDS: int = 60       # per-query Snowflake timeout; increase for large ACCESS_HISTORY
+    REPO_SUBDIRECTORY: str | None = None  # e.g. "dbt" for monorepos
+    PR_TITLE: str | None = None  # used for [skip dbt-vitals] check
+    TARGET_DIR: str = "models/"  # dbt models directory to watch
+    SEEDS_DIR: str = "seeds/"  # dbt seeds directory to watch for deleted CSVs
+    QUERY_TIMEOUT_SECONDS: int = (
+        60  # per-query Snowflake timeout; increase for large ACCESS_HISTORY
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
@@ -58,14 +60,16 @@ class Settings(BaseSettings):
         """Validate required Snowflake fields and account format. Add per-adapter validation here as new adapters are added."""
         if self.WAREHOUSE_TYPE.lower() == "snowflake":
             missing = [
-                name for name, val in {
+                name
+                for name, val in {
                     "SNOWFLAKE_USER": self.SNOWFLAKE_USER,
                     "SNOWFLAKE_ACCOUNT": self.SNOWFLAKE_ACCOUNT,
                     "SNOWFLAKE_WAREHOUSE": self.SNOWFLAKE_WAREHOUSE,
                     "SNOWFLAKE_DATABASE": self.SNOWFLAKE_DATABASE,
                     "SNOWFLAKE_SCHEMA": self.SNOWFLAKE_SCHEMA,
                     "SNOWFLAKE_ROLE": self.SNOWFLAKE_ROLE,
-                }.items() if not val
+                }.items()
+                if not val
             ]
             if missing:
                 raise ValueError(
