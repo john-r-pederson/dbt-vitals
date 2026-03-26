@@ -49,7 +49,7 @@ inputs:
     required: false
     default: 'main'
   target-dir:
-    description: 'Directory to watch for deleted/renamed dbt models.'
+    description: 'Directory (or comma-separated list of directories) to watch for deleted/renamed dbt models. E.g. "models/,snapshots/" watches both simultaneously.'
     required: false
     default: 'models/'
   seeds-dir:

@@ -311,3 +311,165 @@ def test_falls_back_to_origin_prefix_when_local_branch_missing(tmp_path):
 
     changes = DiffEngine(repo_path=str(clone_path)).get_deleted_models(base_branch="main")
     assert "models/stg_users.sql" in _paths(changes)
+
+
+# ---------------------------------------------------------------------------
+# YAML / schema file deletions
+# ---------------------------------------------------------------------------
+
+def test_yaml_only_deletion_is_detected(tmp_path):
+    """Deleting a .yml without deleting the paired .sql means the model still exists — report it."""
+    repo = _init_repo(tmp_path)
+
+    (tmp_path / "models").mkdir()
+    (tmp_path / "models" / "stg_users.sql").write_text("select 1")
+    (tmp_path / "models" / "stg_users.yml").write_text("version: 2")
+    repo.index.add(["models/stg_users.sql", "models/stg_users.yml"])
+    repo.index.commit("initial")
+
+    branch = repo.create_head("feature/remove-yaml")
+    branch.checkout()
+    (tmp_path / "models" / "stg_users.yml").unlink()
+    repo.index.remove(["models/stg_users.yml"])
+    repo.index.commit("remove yaml")
+
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
+    assert "models/stg_users.yml" in _paths(changes)
+
+
+def test_yaml_only_deletion_sets_lookup_path(tmp_path):
+    """A YAML-only deletion must set lookup_path to the paired .sql path for manifest lookup."""
+    repo = _init_repo(tmp_path)
+
+    (tmp_path / "models").mkdir()
+    (tmp_path / "models" / "stg_users.sql").write_text("select 1")
+    (tmp_path / "models" / "stg_users.yml").write_text("version: 2")
+    repo.index.add(["models/stg_users.sql", "models/stg_users.yml"])
+    repo.index.commit("initial")
+
+    branch = repo.create_head("feature/remove-yaml-lookup")
+    branch.checkout()
+    (tmp_path / "models" / "stg_users.yml").unlink()
+    repo.index.remove(["models/stg_users.yml"])
+    repo.index.commit("remove yaml")
+
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
+    change = next(c for c in changes if c.old_path == "models/stg_users.yml")
+    assert change.lookup_path == "models/stg_users.sql"
+
+
+def test_yaml_deleted_with_sql_is_not_duplicated(tmp_path):
+    """When both .yml and .sql are deleted in the same PR, only the .sql change is reported."""
+    repo = _init_repo(tmp_path)
+
+    (tmp_path / "models").mkdir()
+    (tmp_path / "models" / "stg_users.sql").write_text("select 1")
+    (tmp_path / "models" / "stg_users.yml").write_text("version: 2")
+    repo.index.add(["models/stg_users.sql", "models/stg_users.yml"])
+    repo.index.commit("initial")
+
+    branch = repo.create_head("feature/remove-both")
+    branch.checkout()
+    (tmp_path / "models" / "stg_users.sql").unlink()
+    (tmp_path / "models" / "stg_users.yml").unlink()
+    repo.index.remove(["models/stg_users.sql", "models/stg_users.yml"])
+    repo.index.commit("remove model and yaml")
+
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
+    paths = _paths(changes)
+    assert "models/stg_users.sql" in paths
+    assert "models/stg_users.yml" not in paths
+
+
+def test_yaml_outside_target_dir_not_detected(tmp_path):
+    """A .yml deletion outside the watched directory must not be reported."""
+    repo = _init_repo(tmp_path)
+
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "profiles.yml").write_text("version: 2")
+    repo.index.add(["config/profiles.yml"])
+    repo.index.commit("initial")
+
+    branch = repo.create_head("feature/remove-config")
+    branch.checkout()
+    (tmp_path / "config" / "profiles.yml").unlink()
+    repo.index.remove(["config/profiles.yml"])
+    repo.index.commit("remove config yaml")
+
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(base_branch="main")
+    assert changes == []
+
+
+# ---------------------------------------------------------------------------
+# Multi-path target_dir
+# ---------------------------------------------------------------------------
+
+def test_multi_path_target_dir_comma_separated(tmp_path):
+    """target_dir='models/,snapshots/' detects deletions in both directories."""
+    repo = _init_repo(tmp_path)
+
+    (tmp_path / "models").mkdir()
+    (tmp_path / "snapshots").mkdir()
+    (tmp_path / "models" / "stg_users.sql").write_text("select 1")
+    (tmp_path / "snapshots" / "snap_orders.sql").write_text("select 2")
+    repo.index.add(["models/stg_users.sql", "snapshots/snap_orders.sql"])
+    repo.index.commit("initial")
+
+    branch = repo.create_head("feature/remove-both-dirs")
+    branch.checkout()
+    (tmp_path / "models" / "stg_users.sql").unlink()
+    (tmp_path / "snapshots" / "snap_orders.sql").unlink()
+    repo.index.remove(["models/stg_users.sql", "snapshots/snap_orders.sql"])
+    repo.index.commit("remove model and snapshot")
+
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(
+        base_branch="main", target_dir="models/,snapshots/"
+    )
+    paths = _paths(changes)
+    assert "models/stg_users.sql" in paths
+    assert "snapshots/snap_orders.sql" in paths
+
+
+def test_multi_path_target_dir_as_list(tmp_path):
+    """target_dir accepts a Python list as well as a comma-separated string."""
+    repo = _init_repo(tmp_path)
+
+    (tmp_path / "models").mkdir()
+    (tmp_path / "snapshots").mkdir()
+    (tmp_path / "models" / "stg.sql").write_text("select 1")
+    (tmp_path / "snapshots" / "snap.sql").write_text("select 2")
+    repo.index.add(["models/stg.sql", "snapshots/snap.sql"])
+    repo.index.commit("initial")
+
+    branch = repo.create_head("feature/multi-list")
+    branch.checkout()
+    (tmp_path / "snapshots" / "snap.sql").unlink()
+    repo.index.remove(["snapshots/snap.sql"])
+    repo.index.commit("remove snapshot")
+
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(
+        base_branch="main", target_dir=["models/", "snapshots/"]
+    )
+    assert "snapshots/snap.sql" in _paths(changes)
+    assert "models/stg.sql" not in _paths(changes)
+
+
+def test_snapshot_dir_detected_with_target_dir(tmp_path):
+    """Snapshot deletions are detected when snapshots/ is in target_dir."""
+    repo = _init_repo(tmp_path)
+
+    (tmp_path / "snapshots").mkdir()
+    (tmp_path / "snapshots" / "snap_users.sql").write_text("select 1")
+    repo.index.add(["snapshots/snap_users.sql"])
+    repo.index.commit("initial")
+
+    branch = repo.create_head("feature/remove-snapshot")
+    branch.checkout()
+    (tmp_path / "snapshots" / "snap_users.sql").unlink()
+    repo.index.remove(["snapshots/snap_users.sql"])
+    repo.index.commit("remove snapshot")
+
+    changes = DiffEngine(repo_path=str(tmp_path)).get_deleted_models(
+        base_branch="main", target_dir="snapshots/"
+    )
+    assert "snapshots/snap_users.sql" in _paths(changes)

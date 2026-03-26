@@ -130,9 +130,13 @@ class Reporter:
             "> ⚠️ Tables with recent reads or dbt dependents may have active consumers outside this PR.",
         ]
         if has_dependents:
+            example_model = next(
+                (os.path.splitext(os.path.basename(r.file_path))[0] for r in reports if r.downstream_names),
+                "<model>",
+            )
             footer.append(
                 "> ℹ️ **dbt Dependents** shows direct downstream models only — "
-                "run `dbt ls --select <model>+` for the full lineage."
+                f"run `dbt ls --select {example_model}+` for the full lineage."
             )
         footer += [
             "",
@@ -152,12 +156,22 @@ class Reporter:
                     "GitHub's comment limit. See Action logs for full output.",
                 ]
                 if len("\n".join(header + included + notice + footer)) <= _GITHUB_COMMENT_MAX_CHARS:
+                    omitted_paths = [r.file_path for r in reports[len(included):]]
+                    logger.warning(
+                        f"Report truncated: {omitted} model(s) omitted from PR comment: "
+                        + ", ".join(omitted_paths)
+                    )
                     return "\n".join(header + included + notice + footer)
             omitted = len(rows)
             notice = [
                 f"> ⚠️ Report truncated — {omitted} model(s) omitted to fit "
                 "GitHub's comment limit. See Action logs for full output.",
             ]
+            omitted_paths = [r.file_path for r in reports]
+            logger.warning(
+                f"Report truncated: {omitted} model(s) omitted from PR comment: "
+                + ", ".join(omitted_paths)
+            )
             return "\n".join(header + notice + footer)
 
         return full
