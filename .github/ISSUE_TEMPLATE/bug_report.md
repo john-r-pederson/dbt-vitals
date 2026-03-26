@@ -11,7 +11,7 @@ A clear description of what happened and what you expected.
 - [ ] Snowflake
 - [ ] Other (specify):
 
-**How are you running Isotrope?**
+**How are you running dbt-vitals?**
 - [ ] GitHub Action
 - [ ] Local (`uv run python src/main.py`)
 
@@ -28,7 +28,7 @@ Paste the full error from the GitHub Actions log or terminal.
 3.
 
 **Environment**
-- Isotrope version / commit:
+- dbt-vitals version / commit:
 - Python version (if running locally):
 - OS (if running locally):
 
