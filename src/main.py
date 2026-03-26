@@ -39,7 +39,7 @@ def run() -> None:
     except TypeError:
         current_branch = os.environ.get("GITHUB_HEAD_REF", "unknown")
 
-    target_dir = cfg.TARGET_DIR if hasattr(cfg, "TARGET_DIR") else "models/"
+    target_dir = cfg.TARGET_DIR
     changes = diff.get_deleted_models(base_branch=cfg.BASE_BRANCH, target_dir=target_dir)
 
     if not changes:
