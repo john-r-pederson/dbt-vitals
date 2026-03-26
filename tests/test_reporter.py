@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 from io import BytesIO
 from http.client import HTTPMessage
 
-from reporter import Reporter, ModelReport, _COMMENT_TAG, _parse_next_link, _risk_indicator, _format_size, _TOOL_URL, _escape_md
+from reporter import Reporter, ModelReport, _COMMENT_TAG, _parse_next_link, _risk_indicator, _format_size, _TOOL_URL, _escape_md, _GITHUB_COMMENT_MAX_CHARS
 
 
 def _make_cfg(github_token=None, github_repository=None, pr_number=None, lookback_days=90):
@@ -466,6 +466,52 @@ def test_risk_indicator_in_report_markdown():
     r = _report(read_count=5, distinct_users=2, downstream_names=["fct_orders"])
     md = _reporter().build_markdown([r])
     assert "🔴" in md
+
+
+# ---------------------------------------------------------------------------
+# Transitive deps note
+# ---------------------------------------------------------------------------
+
+def test_transitive_deps_note_shown_when_dependents_present():
+    """When any report has downstream dependents, a note about direct-only scope is added."""
+    r = _report(downstream_names=["fct_orders"])
+    md = _reporter().build_markdown([r])
+    assert "direct downstream" in md.lower()
+
+
+def test_transitive_deps_note_absent_when_no_dependents():
+    """When no report has downstream dependents, the transitive deps note is omitted."""
+    r = _report(downstream_names=[])
+    md = _reporter().build_markdown([r])
+    assert "direct downstream" not in md.lower()
+
+
+# ---------------------------------------------------------------------------
+# Report truncation
+# ---------------------------------------------------------------------------
+
+def test_report_truncated_when_exceeds_github_limit():
+    """Reports exceeding the GitHub comment limit are truncated with a notice."""
+    long_name = "a_very_long_model_name_that_takes_up_space_in_the_report"
+    reports = [
+        _report(
+            file_path=f"models/staging/finance/reporting/{long_name}_{i:04d}.sql",
+            table_ref=f"PRODUCTION_DATABASE.FINANCE_REPORTING_SCHEMA.{long_name.upper()}_{i:04d}",
+            downstream_names=[f"dep_model_{j}" for j in range(10)],
+        )
+        for i in range(500)
+    ]
+    md = _reporter().build_markdown(reports)
+    assert len(md) <= _GITHUB_COMMENT_MAX_CHARS
+    assert "truncated" in md.lower()
+    assert "omitted" in md.lower()
+
+
+def test_report_under_limit_is_not_truncated():
+    """A small report that fits within the limit must not contain a truncation notice."""
+    reports = [_report(), _report(file_path="models/b.sql")]
+    md = _reporter().build_markdown(reports)
+    assert "truncated" not in md.lower()
 
 
 # ---------------------------------------------------------------------------
