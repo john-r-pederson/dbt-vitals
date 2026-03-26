@@ -97,3 +97,47 @@ def test_non_snowflake_warehouse_skips_validation(monkeypatch):
     # Should not raise — Snowflake validation is skipped for other warehouse types
     cfg = Settings(_env_file=None)
     assert cfg.WAREHOUSE_TYPE == "bigquery"
+
+
+# ---------------------------------------------------------------------------
+# Snowflake account format validation
+# ---------------------------------------------------------------------------
+
+def test_legacy_account_locator_raises(monkeypatch):
+    with pytest.raises((ValidationError, ValueError)) as exc_info:
+        _settings(monkeypatch, {"SNOWFLAKE_ACCOUNT": "wdb44754"})
+    assert "org-account" in str(exc_info.value)
+
+
+def test_valid_account_format_accepted(monkeypatch):
+    cfg = _settings(monkeypatch, {"SNOWFLAKE_ACCOUNT": "acme-abc12345"})
+    assert cfg.SNOWFLAKE_ACCOUNT == "acme-abc12345"
+
+
+def test_account_with_multiple_hyphens_accepted(monkeypatch):
+    cfg = _settings(monkeypatch, {"SNOWFLAKE_ACCOUNT": "my-org-abc12345"})
+    assert cfg.SNOWFLAKE_ACCOUNT == "my-org-abc12345"
+
+
+# ---------------------------------------------------------------------------
+# LOOKBACK_DAYS validation
+# ---------------------------------------------------------------------------
+
+def test_lookback_days_default_is_90(monkeypatch):
+    cfg = _settings(monkeypatch, {})
+    assert cfg.LOOKBACK_DAYS == 90
+
+
+def test_lookback_days_valid_value_accepted(monkeypatch):
+    cfg = _settings(monkeypatch, {"LOOKBACK_DAYS": "30"})
+    assert cfg.LOOKBACK_DAYS == 30
+
+
+def test_lookback_days_zero_raises(monkeypatch):
+    with pytest.raises((ValidationError, ValueError)):
+        _settings(monkeypatch, {"LOOKBACK_DAYS": "0"})
+
+
+def test_lookback_days_negative_raises(monkeypatch):
+    with pytest.raises((ValidationError, ValueError)):
+        _settings(monkeypatch, {"LOOKBACK_DAYS": "-5"})

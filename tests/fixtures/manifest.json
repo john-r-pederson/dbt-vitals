@@ -1,4 +1,8 @@
 {
+    "metadata": {
+        "generated_at": "2026-03-25T10:00:00.000000Z",
+        "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v11/manifest.json"
+    },
     "nodes": {
         "model.my_project.stg_users": {
             "resource_type": "model",
@@ -6,7 +10,9 @@
             "database": "PROD_DB",
             "schema": "STAGING",
             "name": "stg_users",
-            "alias": "STG_USERS"
+            "alias": "STG_USERS",
+            "config": {"materialized": "table"},
+            "depends_on": {"nodes": ["source.my_project.raw.users"]}
         },
         "model.my_project.fct_orders": {
             "resource_type": "model",
@@ -14,7 +20,9 @@
             "database": "PROD_DB",
             "schema": "MARTS",
             "name": "fct_orders",
-            "alias": null
+            "alias": null,
+            "config": {"materialized": "incremental"},
+            "depends_on": {"nodes": ["model.my_project.stg_users", "source.my_project.raw.orders"]}
         },
         "model.my_project.aliased_model": {
             "resource_type": "model",
@@ -22,7 +30,9 @@
             "database": "PROD_DB",
             "schema": "CORE",
             "name": "aliased_model",
-            "alias": "CUSTOM_ALIAS"
+            "alias": "CUSTOM_ALIAS",
+            "config": {"materialized": "view"},
+            "depends_on": {"nodes": ["model.my_project.stg_users"]}
         },
         "test.my_project.not_a_model": {
             "resource_type": "test",
@@ -30,7 +40,29 @@
             "database": "PROD_DB",
             "schema": "STAGING",
             "name": "not_a_model",
-            "alias": null
+            "alias": null,
+            "config": {},
+            "depends_on": {"nodes": []}
+        },
+        "snapshot.my_project.orders_snapshot": {
+            "resource_type": "snapshot",
+            "original_file_path": "snapshots/orders_snapshot.sql",
+            "database": "PROD_DB",
+            "schema": "SNAPSHOTS",
+            "name": "orders_snapshot",
+            "alias": "ORDERS_SNAPSHOT",
+            "config": {"materialized": "snapshot"},
+            "depends_on": {"nodes": ["model.my_project.fct_orders"]}
+        },
+        "seed.my_project.ref_countries": {
+            "resource_type": "seed",
+            "original_file_path": "seeds/ref_countries.csv",
+            "database": "PROD_DB",
+            "schema": "SEEDS",
+            "name": "ref_countries",
+            "alias": "REF_COUNTRIES",
+            "config": {"materialized": "seed"},
+            "depends_on": {"nodes": []}
         }
     }
 }

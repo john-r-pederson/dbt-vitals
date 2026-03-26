@@ -1,13 +1,15 @@
-name: Isotrope
+name: dbt-vitals
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
       - 'models/**/*.sql'
+      - 'snapshots/**/*.sql'
+      - 'seeds/**/*.csv'
 
 jobs:
-  isotrope:
+  dbt-vitals:
     name: Warehouse Impact Report
     runs-on: ubuntu-latest
     permissions:
@@ -23,7 +25,7 @@ jobs:
           fetch-depth: 0
 
       # ---------------------------------------------------------------------------
-      # Download your production dbt manifest.json before running Isotrope.
+      # Download your production dbt manifest.json before running dbt-vitals.
       # Uncomment and adapt ONE of the options below to match your setup.
       # ---------------------------------------------------------------------------
 
@@ -46,7 +48,7 @@ jobs:
       # Option C: Manifest is committed to the repo (not recommended for large teams)
       # No step needed — it will be present after checkout.
 
-      - name: Run Isotrope
+      - name: Run dbt-vitals
         uses: ./
         with:
           warehouse-type: snowflake
@@ -59,8 +61,9 @@ jobs:
           snowflake-role: ${{ secrets.SNOWFLAKE_ROLE }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           pr-number: ${{ github.event.pull_request.number }}
+          pr-title: ${{ github.event.pull_request.title }}
           # -------------------------------------------------------------------
-          # NOTE: the manifest-path below is for Isotrope's own CI test only.
+          # NOTE: the manifest-path below is for dbt-vitals' own CI test only.
           # In your dbt repo, remove this line and uncomment one of the
           # manifest download options above to provide your production manifest.
           # -------------------------------------------------------------------
