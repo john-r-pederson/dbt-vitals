@@ -244,6 +244,17 @@ def test_query_table_metadata_returns_error_flag_on_exception():
     assert query_error is True
 
 
+def test_query_table_metadata_strips_quotes_from_hyphenated_bind_params():
+    """_validate_identifier quotes hyphenated names; those quotes must not reach the bind params."""
+    adapter = SnowflakeAdapter.__new__(SnowflakeAdapter)
+    cursor = MagicMock()
+    cursor.fetchone.return_value = None
+    adapter.cursor = cursor
+    adapter._query_table_metadata('"MYDB"', '"prod-schema"', '"fact-orders"')
+    _, call_args = cursor.execute.call_args
+    assert call_args == ("prod-schema", "fact-orders")
+
+
 # ---------------------------------------------------------------------------
 # get_table_stats — integration of both queries (mocked cursor)
 # ---------------------------------------------------------------------------
