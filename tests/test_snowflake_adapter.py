@@ -14,9 +14,7 @@ from cryptography.hazmat.primitives.serialization import (
     PrivateFormat,
 )
 
-from adapters.snowflake_adapter import _format_date, _validate_identifier
-from adapters.snowflake_adapter import SnowflakeAdapter
-
+from adapters.snowflake_adapter import SnowflakeAdapter, _format_date, _validate_identifier
 
 # ---------------------------------------------------------------------------
 # _format_date

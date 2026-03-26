@@ -3,9 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import main
-from reporter import ModelReport
 from diff_engine import ModelChange
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

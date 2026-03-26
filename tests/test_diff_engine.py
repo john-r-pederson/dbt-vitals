@@ -1,6 +1,7 @@
-import pytest
 import git
-from diff_engine import DiffEngine, ModelChange
+import pytest
+
+from diff_engine import DiffEngine
 
 
 def _paths(changes):
