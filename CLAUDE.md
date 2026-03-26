@@ -123,12 +123,24 @@ Delete key files from filesystem immediately after — never commit them.
 ## Local End-to-End Test
 
 ```bash
-# Test branch that deletes models/stg_users.sql exists at: test/delete-stg-users
-git checkout test/delete-stg-users
+# Comprehensive E2E test branch — covers 7 scenarios
+git checkout test/e2e-scenarios
 uv run python src/main.py
 ```
 
-Expects manifest at `./test-dbt-repo/target/manifest.json` mapping `models/stg_users.sql` → `DBT_VITALS_DB.DBT_VITALS_STAGING.STG_USERS`.
+Uses `./test-dbt-repo/target/manifest.json`. Scenarios covered:
+
+| Scenario | Model / file |
+| :--- | :--- |
+| Table exists in Snowflake | `models/stg_users.sql` → `DBT_VITALS_DB.DBT_VITALS_STAGING.STG_USERS` |
+| Table not in warehouse | `models/stg_ghost.sql` → `STG_GHOST_MODEL` (never created) |
+| Model not in manifest | `models/stg_orphan.sql` (no manifest entry) |
+| Rename | `models/stg_customers.sql` → `models/staging/stg_customers.sql` |
+| Seed (.csv) | `seeds/ref_countries.csv` |
+| Downstream dep tracking | `fct_orders` depends on `stg_users` in manifest |
+| Risk indicator | `stg_users` shows 🟡/🔴 due to downstream dep |
+
+**Known E2E gap:** access history unavailable (`_(no ACCESS_HISTORY grant)_`) requires a separate Snowflake role without `IMPORTED PRIVILEGES`. Covered by unit tests in `tests/test_snowflake_adapter.py`.
 
 ---
 

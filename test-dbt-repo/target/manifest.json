@@ -1,12 +1,68 @@
 {
-    "nodes": {
-        "model.dbt_vitals_test.stg_users": {
-            "resource_type": "model",
-            "original_file_path": "models/stg_users.sql",
-            "database": "DBT_VITALS_DB",
-            "schema": "DBT_VITALS_STAGING",
-            "name": "stg_users",
-            "alias": "STG_USERS"
-        }
+  "metadata": {
+    "generated_at": "2026-03-26T00:00:00.000000Z",
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v11/manifest.json"
+  },
+  "nodes": {
+    "model.dbt_vitals_test.stg_users": {
+      "resource_type": "model",
+      "original_file_path": "models/stg_users.sql",
+      "database": "DBT_VITALS_DB",
+      "schema": "DBT_VITALS_STAGING",
+      "name": "stg_users",
+      "alias": "STG_USERS",
+      "config": {"materialized": "table"},
+      "depends_on": {"nodes": []}
+    },
+    "model.dbt_vitals_test.stg_ghost": {
+      "resource_type": "model",
+      "original_file_path": "models/stg_ghost.sql",
+      "database": "DBT_VITALS_DB",
+      "schema": "DBT_VITALS_STAGING",
+      "name": "stg_ghost",
+      "alias": "STG_GHOST_MODEL",
+      "config": {"materialized": "table"},
+      "depends_on": {"nodes": []}
+    },
+    "model.dbt_vitals_test.fct_orders": {
+      "resource_type": "model",
+      "original_file_path": "models/fct_orders.sql",
+      "database": "DBT_VITALS_DB",
+      "schema": "DBT_VITALS_STAGING",
+      "name": "fct_orders",
+      "alias": "FCT_ORDERS",
+      "config": {"materialized": "incremental"},
+      "depends_on": {"nodes": ["model.dbt_vitals_test.stg_users"]}
+    },
+    "model.dbt_vitals_test.v_customers": {
+      "resource_type": "model",
+      "original_file_path": "models/v_customers.sql",
+      "database": "DBT_VITALS_DB",
+      "schema": "DBT_VITALS_STAGING",
+      "name": "v_customers",
+      "alias": "V_CUSTOMERS",
+      "config": {"materialized": "view"},
+      "depends_on": {"nodes": []}
+    },
+    "model.dbt_vitals_test.stg_customers": {
+      "resource_type": "model",
+      "original_file_path": "models/stg_customers.sql",
+      "database": "DBT_VITALS_DB",
+      "schema": "DBT_VITALS_STAGING",
+      "name": "stg_customers",
+      "alias": "STG_CUSTOMERS",
+      "config": {"materialized": "table"},
+      "depends_on": {"nodes": []}
+    },
+    "seed.dbt_vitals_test.ref_countries": {
+      "resource_type": "seed",
+      "original_file_path": "seeds/ref_countries.csv",
+      "database": "DBT_VITALS_DB",
+      "schema": "DBT_VITALS_SEEDS",
+      "name": "ref_countries",
+      "alias": "REF_COUNTRIES",
+      "config": {"materialized": "seed"},
+      "depends_on": {"nodes": []}
     }
+  }
 }
