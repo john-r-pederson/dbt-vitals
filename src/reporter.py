@@ -164,7 +164,7 @@ class Reporter:
         req = urllib.request.Request(url, data=payload, headers=headers, method=method)
 
         try:
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req, timeout=30) as resp:
                 if resp.status in (200, 201):
                     logger.info("PR comment published.")
                 else:
@@ -183,7 +183,7 @@ class Reporter:
         while url:
             req = urllib.request.Request(url, headers=headers)
             try:
-                with urllib.request.urlopen(req) as resp:
+                with urllib.request.urlopen(req, timeout=30) as resp:
                     comments = json.loads(resp.read())
                     for comment in comments:
                         if _COMMENT_TAG in comment.get("body", ""):
