@@ -19,18 +19,7 @@ jobs:
           ref: test/e2e-scenarios
           fetch-depth: 0
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
-
-      - name: Run dbt-vitals E2E
-        run: |
-          echo "=== uv/python versions ==="
-          uv --version
-          uv run python --version
-          echo "=== running dbt-vitals ==="
-          uv run python src/main.py 2>&1 | tee /tmp/e2e-output.txt; EXIT=${PIPESTATUS[0]}
-          echo "=== exit code: $EXIT | output: $(wc -c < /tmp/e2e-output.txt) bytes ==="
-          exit $EXIT
+      - name: Run dbt-vitals E2E (via published Docker image)
         env:
           GITHUB_BASE_REF: main
           MANIFEST_PATH: ./test-dbt-repo/target/manifest.json
@@ -41,6 +30,23 @@ jobs:
           SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
           SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
           SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+        run: |
+          docker run --rm \
+            -w /github/workspace \
+            -v "$GITHUB_WORKSPACE:/github/workspace" \
+            -e GITHUB_BASE_REF \
+            -e MANIFEST_PATH \
+            -e SNOWFLAKE_ACCOUNT \
+            -e SNOWFLAKE_USER \
+            -e SNOWFLAKE_PRIVATE_KEY \
+            -e SNOWFLAKE_WAREHOUSE \
+            -e SNOWFLAKE_DATABASE \
+            -e SNOWFLAKE_SCHEMA \
+            -e SNOWFLAKE_ROLE \
+            ghcr.io/john-r-pederson/dbt-vitals:latest \
+            2>&1 | tee /tmp/e2e-output.txt; EXIT=${PIPESTATUS[0]}
+          echo "=== exit code: $EXIT | output: $(wc -c < /tmp/e2e-output.txt) bytes ==="
+          exit $EXIT
 
       - name: Assert — happy path (table found in Snowflake)
         run: |
