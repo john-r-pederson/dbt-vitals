@@ -16,8 +16,8 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/Laskr/dbt-vitals"
-Homepage = "https://github.com/Laskr/dbt-vitals"
+Repository = "https://github.com/john-r-pederson/dbt-vitals"
+Homepage = "https://github.com/john-r-pederson/dbt-vitals"
 
 [dependency-groups]
 dev = [
