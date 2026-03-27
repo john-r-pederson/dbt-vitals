@@ -9,7 +9,7 @@ Please note that this project follows a [Code of Conduct](CODE_OF_CONDUCT.md). B
 ## Dev setup
 
 ```bash
-git clone https://github.com/Laskr/dbt-vitals.git
+git clone https://github.com/john-r-pederson/dbt-vitals.git
 cd dbt-vitals
 uv sync
 uv run pytest tests/ -v

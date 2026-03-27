@@ -1,6 +1,6 @@
 # dbt-vitals
 
-[![CI](https://github.com/Laskr/dbt-vitals/actions/workflows/ci.yml/badge.svg)](https://github.com/Laskr/dbt-vitals/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/john-r-pederson/dbt-vitals/actions/workflows/ci.yml/badge.svg)](https://github.com/john-r-pederson/dbt-vitals/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **dbt-vitals** is a GitHub Action that protects your data warehouse from silent table drops.
 
@@ -68,7 +68,7 @@ jobs:
       # See "Manifest setup" below.
 
       - name: Run dbt-vitals
-        uses: Laskr/dbt-vitals@v0.1.0
+        uses: john-r-pederson/dbt-vitals@v0.1.0
         with:
           warehouse-type: snowflake
           snowflake-account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
