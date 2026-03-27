@@ -4,7 +4,7 @@
 
 **dbt-vitals** is a GitHub Action that tells you whether a table is safe to delete — and flags warehouse tables that should have been cleaned up already.
 
-When a pull request touches your dbt models, dbt-vitals cross-references your `manifest.json` against the live warehouse and posts a **Warehouse Impact Report** as a PR comment: size, last altered, read count, downstream dependents, and any warehouse tables with no matching manifest entry. No more silent drops of tables still in heavy use, and no more orphaned tables quietly accumulating storage costs.
+When a pull request deletes or renames a dbt model, dbt-vitals cross-references your `manifest.json` against the live warehouse and posts a **Warehouse Impact Report** as a PR comment: size, last altered, read count, and downstream dependents. See exactly what you're about to lose — and whether anything still depends on it — before you merge.
 
 ```markdown
 ## 🔍 dbt-vitals: Warehouse Impact Report
@@ -25,10 +25,11 @@ When a pull request touches your dbt models, dbt-vitals cross-references your `m
 
 ## Requirements
 
-- **GitHub Actions** — dbt-vitals runs as a Docker-based Action on GitHub-hosted runners
+- **GitHub Actions** — dbt-vitals runs as a Docker-based Action on GitHub-hosted or self-hosted runners
 - **Snowflake** — the only supported warehouse today (BigQuery, Redshift, Databricks: [planned](#additional-adapters))
 - **Service account** with key-pair RSA authentication (see [Authentication](#authentication))
 - **A compiled `manifest.json`** from your production dbt project (see [Manifest setup](#manifest-setup))
+- **dbt manifest schema v11** (dbt-core 1.6+) — earlier versions may work but are untested
 
 ---
 
@@ -71,7 +72,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # Pin to a SHA in security-sensitive environments
         with:
           fetch-depth: 0   # Full history required for the git diff
 
@@ -138,6 +139,8 @@ Add a step **before** "Run dbt-vitals" to make it available. Pick the option tha
   run: dbt compile --profiles-dir . --target prod
 # manifest is now at ./target/manifest.json — no manifest-path input needed
 ```
+
+> This requires a `profiles.yml` and production credentials available in the runner environment. Most teams prefer Option B or C to avoid exposing production credentials on PR workflows.
 
 #### Option B — dbt Cloud: download from the artifacts API
 
@@ -261,7 +264,7 @@ Inputs marked **✓** are always required. Inputs marked **S** are required when
 | `repo-subdirectory` | | | Subdirectory where dbt lives in a monorepo (e.g. `dbt`). Strips this prefix from git diff paths before manifest lookup. |
 | `pr-title` | | | PR title. Used to detect `[skip dbt-vitals]` label. Pass `github.event.pull_request.title`. |
 | `github-token` | ✓ | | Use `secrets.GITHUB_TOKEN` |
-| `pr-number` | | | Pass `github.event.pull_request.number` |
+| `pr-number` | | | Pass `github.event.pull_request.number`. If omitted, no PR comment is posted — the report is printed to the Action log only. |
 
 ---
 
@@ -364,6 +367,14 @@ The **dbt Dependents** column shows only **direct** dependents. If `stg_users �
 | Table exists, role lacks `IMPORTED PRIVILEGES` | Size and last-altered reported; Reads column shows _(no ACCESS_HISTORY grant)_ |
 | Table not found | _(not in warehouse)_ — already dropped, or in a different database than the manifest specifies |
 | External tables | May not appear in `INFORMATION_SCHEMA.TABLES` on some Snowflake account configurations |
+
+### What "Last Altered" means
+
+The **Last Altered** column reflects the last DDL change — when the table was created, a column was added, a clustering key changed, etc. It does **not** reflect when data was last loaded. A table loaded daily with no schema changes will show its original creation date. Use the **Reads (90d)** column as the better signal for active consumption.
+
+### What "Reads (90d)" counts
+
+`ACCESS_HISTORY` records every query that touched the table — including dbt pipeline runs, dbt tests, BI tool scheduled refreshes, and ad-hoc SQL. A table showing 318 reads from 12 users could be entirely automated dbt runs with no human consumers. High read counts mean *something* is using the table; they don't tell you what.
 
 ### Read count freshness
 
