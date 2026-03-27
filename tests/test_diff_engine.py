@@ -260,8 +260,9 @@ def test_empty_repo_returns_empty_list(tmp_path):
     assert changes == []
 
 
-def test_missing_base_branch_raises(tmp_path):
+def test_missing_base_branch_raises(tmp_path, monkeypatch):
     """When neither the bare branch nor origin/<branch> exist, raise a descriptive error."""
+    monkeypatch.delenv("GITHUB_BASE_REF", raising=False)
     _make_repo(tmp_path)  # local-only repo — no remote, no origin/
     engine = DiffEngine(repo_path=str(tmp_path))
     with pytest.raises(Exception, match="not found"):
