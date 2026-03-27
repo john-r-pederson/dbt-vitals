@@ -16,7 +16,7 @@ dbt-vitals handles sensitive credentials (Snowflake private keys, GitHub tokens)
 
 **How to report:**
 
-1. Open a [GitHub Security Advisory](https://github.com/Laskr/dbt-vitals/security/advisories/new) (preferred — keeps the report confidential within GitHub)
+1. Open a [GitHub Security Advisory](https://github.com/john-r-pederson/dbt-vitals/security/advisories/new) (preferred — keeps the report confidential within GitHub)
 2. Or email [john@laskrconsulting.com](mailto:john@laskrconsulting.com) with the subject line `[SECURITY] <brief description>`
 
 Please include:

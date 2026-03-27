@@ -61,5 +61,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/Laskr/dbt-vitals:${{ steps.meta.outputs.tag }}
-            ghcr.io/Laskr/dbt-vitals:latest
+            ghcr.io/john-r-pederson/dbt-vitals:${{ steps.meta.outputs.tag }}
+            ghcr.io/john-r-pederson/dbt-vitals:latest
