@@ -400,3 +400,126 @@ def test_monorepo_path_collision_last_node_wins(tmp_path):
     # and returns a deterministic result (not None).
     assert result is not None
     assert result["database"] in ("DB_A", "DB_B")
+
+
+def test_dbt_package_node_does_not_match_user_model_path(tmp_path):
+    """
+    Manifests include nodes from imported dbt packages (e.g. dbt_utils).
+    Their original_file_path starts with 'dbt_packages/'. A user file at
+    'models/stg_users.sql' must not resolve to a package node.
+    """
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.dbt_utils.stg_users": {
+                "resource_type": "model",
+                "original_file_path": "dbt_packages/dbt_utils/models/stg_users.sql",
+                "database": "DB", "schema": "SCH", "name": "stg_users", "alias": None,
+                "config": {"materialized": "table"}, "depends_on": {"nodes": []},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    assert eng.get_table("models/stg_users.sql") is None
+    assert eng.get_table("dbt_packages/dbt_utils/models/stg_users.sql") is not None
+
+
+def test_relation_name_field_does_not_break_parsing(tmp_path):
+    """dbt 1.5+ nodes include a 'relation_name' field. It must be ignored without error."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.p.stg_events": {
+                "resource_type": "model",
+                "original_file_path": "models/stg_events.sql",
+                "database": "DB", "schema": "SCH", "name": "stg_events", "alias": None,
+                "relation_name": '"DB"."SCH"."stg_events"',
+                "config": {"materialized": "table"}, "depends_on": {"nodes": []},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    result = eng.get_table("models/stg_events.sql")
+    assert result is not None
+    assert result["name"] == "stg_events"
+
+
+def test_versioned_model_path_resolves_correctly(tmp_path):
+    """
+    dbt 1.5+ versioned models produce files like 'models/stg_users_v1.sql'.
+    The manifest maps that exact path — verify get_table finds it.
+    """
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.p.stg_users.v1": {
+                "resource_type": "model",
+                "original_file_path": "models/stg_users_v1.sql",
+                "database": "DB", "schema": "SCH", "name": "stg_users", "alias": "stg_users_v1",
+                "config": {"materialized": "table"}, "depends_on": {"nodes": []},
+            },
+            "model.p.stg_users.v2": {
+                "resource_type": "model",
+                "original_file_path": "models/stg_users_v2.sql",
+                "database": "DB", "schema": "SCH", "name": "stg_users", "alias": "stg_users",
+                "config": {"materialized": "table"}, "depends_on": {"nodes": []},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    v1 = eng.get_table("models/stg_users_v1.sql")
+    v2 = eng.get_table("models/stg_users_v2.sql")
+    assert v1 is not None and v1["name"] == "stg_users_v1"
+    assert v2 is not None and v2["name"] == "stg_users"
+
+
+def test_schema_version_v12_does_not_warn(tmp_path, caplog):
+    """Future manifest schema versions like v12 must not trigger the version warning."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "metadata": {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12/manifest.json",
+        },
+        "nodes": {}
+    }))
+    with caplog.at_level(logging.WARNING):
+        ManifestEngine(provided_path=str(manifest))
+    assert "unexpected" not in caplog.text.lower()
+
+
+def test_schema_version_non_v1x_warns(tmp_path, caplog):
+    """A non-v1x schema version URL (hypothetical future major) must log a warning."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "metadata": {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v20/manifest.json",
+        },
+        "nodes": {}
+    }))
+    with caplog.at_level(logging.WARNING):
+        ManifestEngine(provided_path=str(manifest))
+    assert "unexpected" in caplog.text.lower()
+
+
+def test_null_database_in_manifest_returns_none_in_table_meta(tmp_path):
+    """
+    Some warehouse adapters (e.g. BigQuery) may produce a null database.
+    ManifestEngine must return the entry without raising; callers handle None.
+    """
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.p.stg_events": {
+                "resource_type": "model",
+                "original_file_path": "models/stg_events.sql",
+                "database": None, "schema": "SCH", "name": "stg_events", "alias": None,
+                "config": {"materialized": "table"}, "depends_on": {"nodes": []},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    result = eng.get_table("models/stg_events.sql")
+    assert result is not None
+    assert result["database"] is None
