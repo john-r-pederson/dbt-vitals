@@ -483,24 +483,38 @@ def test_risk_indicator_in_report_markdown():
 # ---------------------------------------------------------------------------
 
 def test_transitive_deps_note_shown_when_dependents_present():
-    """When any report has downstream dependents, a note about direct-only scope is added."""
+    """When any report has downstream dependents, a transitive lineage note is shown."""
     r = _report(downstream_names=["fct_orders"])
     md = _reporter().build_markdown([r])
-    assert "direct downstream" in md.lower()
+    assert "transitive" in md.lower()
 
 
 def test_transitive_deps_note_absent_when_no_dependents():
     """When no report has downstream dependents, the transitive deps note is omitted."""
     r = _report(downstream_names=[])
     md = _reporter().build_markdown([r])
-    assert "direct downstream" not in md.lower()
+    assert "transitive" not in md.lower()
 
 
-def test_transitive_deps_note_uses_actual_model_name():
-    """The dbt ls hint in the transitive deps note uses the stem of the first model with dependents."""
-    r = _report(file_path="models/staging/stg_orders.sql", downstream_names=["fct_orders"])
+def test_deps_column_truncated_beyond_five():
+    """More than 5 downstream names are truncated to 5 shown + '+ N more'."""
+    names = [f"model_{i}" for i in range(8)]
+    r = _report(downstream_names=names)
     md = _reporter().build_markdown([r])
-    assert "stg_orders+" in md
+    assert "+3 more" in md
+    assert "`model_0`" in md
+    assert "`model_4`" in md
+    assert "`model_5`" not in md  # beyond the cap
+
+
+def test_deps_column_shows_all_when_five_or_fewer():
+    """Five or fewer downstream names are all shown without truncation."""
+    names = ["a", "b", "c", "d", "e"]
+    r = _report(downstream_names=names)
+    md = _reporter().build_markdown([r])
+    for name in names:
+        assert f"`{name}`" in md
+    assert "more" not in md
 
 
 # ---------------------------------------------------------------------------
