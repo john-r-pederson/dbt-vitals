@@ -34,7 +34,7 @@ When a pull request touches your dbt models, dbt-vitals cross-references your `m
 
 ## How it works
 
-1. On every PR that touches `models/**/*.sql`, `snapshots/**/*.sql`, or `seeds/**/*.csv`, dbt-vitals runs inside a Docker container on GitHub-hosted runners.
+1. On every PR that touches `models/` (`.sql`, `.yml`, `.yaml`), `snapshots/`, or `seeds/`, dbt-vitals runs inside a Docker container on GitHub-hosted runners. The trigger paths in your workflow control which file types fire the Action — see [Quickstart](#quickstart).
 2. It diffs HEAD against your base branch to find deleted or renamed files.
 3. It looks up each file in your dbt `manifest.json` to get the fully-qualified warehouse table name.
 4. It queries `INFORMATION_SCHEMA.TABLES` for size, type, and last-altered timestamp, and `ACCOUNT_USAGE.ACCESS_HISTORY` for read counts and distinct users.
@@ -239,16 +239,18 @@ Delete both key files from your filesystem immediately after — never commit th
 
 ## All inputs
 
+Inputs marked **✓** are always required. Inputs marked **S** are required when `warehouse-type: snowflake` (the only supported warehouse today).
+
 | Input | Required | Default | Description |
 | :--- | :---: | :--- | :--- |
 | `warehouse-type` | | `snowflake` | Warehouse type. Currently supported: `snowflake` |
-| `snowflake-account` | | | Account in `org-account` format, e.g. `myorg-abc12345`. Find it at app.snowflake.com → Admin → Accounts. |
-| `snowflake-user` | | | Snowflake username |
-| `snowflake-private-key` | | | Base64-encoded PKCS8 PEM private key |
+| `snowflake-account` | S | | Account in `org-account` format, e.g. `myorg-abc12345`. Find it at app.snowflake.com → Admin → Accounts. |
+| `snowflake-user` | S | | Snowflake username |
+| `snowflake-private-key` | S | | Base64-encoded PKCS8 PEM private key |
 | `snowflake-private-key-passphrase` | | | Passphrase for the private key (leave blank if unencrypted) |
-| `snowflake-warehouse` | | | Virtual warehouse name |
-| `snowflake-database` | | | Default database |
-| `snowflake-schema` | | | Default schema |
+| `snowflake-warehouse` | S | | Virtual warehouse name |
+| `snowflake-database` | S | | Default database |
+| `snowflake-schema` | S | | Default schema |
 | `snowflake-role` | | `DBT_VITALS_ROLE` | Role for warehouse queries |
 | `manifest-path` | | | Explicit path to `manifest.json`. Auto-discovered at `target/manifest.json` if not set. |
 | `base-branch` | | `main` | Branch to diff against. Defaults to `GITHUB_BASE_REF` (the PR target). |
