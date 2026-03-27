@@ -23,6 +23,15 @@ When a pull request deletes or renames a dbt model, dbt-vitals maps the file to 
 
 ---
 
+## Requirements
+
+- **GitHub Actions** — dbt-vitals runs as a Docker-based Action on GitHub-hosted runners
+- **Snowflake** — the only supported warehouse today (BigQuery, Redshift, Databricks: [planned](#additional-adapters))
+- **Service account** with key-pair RSA authentication (see [Authentication](#authentication))
+- **A compiled `manifest.json`** from your production dbt project (see [Manifest setup](#manifest-setup))
+
+---
+
 ## How it works
 
 1. On every PR that touches `models/**/*.sql`, `snapshots/**/*.sql`, or `seeds/**/*.csv`, dbt-vitals runs inside a Docker container on GitHub-hosted runners.
@@ -47,6 +56,8 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'models/**/*.sql'
+      - 'models/**/*.yml'    # Required for YAML-only schema file deletion detection
+      - 'models/**/*.yaml'   # Required for YAML-only schema file deletion detection
       - 'snapshots/**/*.sql'
       - 'seeds/**/*.csv'
 
@@ -273,8 +284,9 @@ Using the account locator alone (e.g. `abc12345`) causes 404 connection errors.
 # Install deps
 uv sync
 
-# Run against a branch that deletes a model
-git checkout test/delete-stg-users
+# Run against the comprehensive E2E test branch
+# (7 scenarios: deletion, not-in-warehouse, not-in-manifest, rename, seed, downstream deps, risk indicator)
+git checkout test/e2e-scenarios
 uv run python src/main.py
 
 # Run tests
@@ -310,21 +322,17 @@ The `ACCESS_HISTORY` read count is the closest proxy. If a table shows 318 reads
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the adapter interface and contribution guide.
 
-### Test fixture coverage
-
-The current `tests/fixtures/manifest.json` is minimal — a single model, happy-path only. A more realistic fixture set would cover:
-
-- Multiple models with and without dependents
-- Snapshots and seeds
-- Models missing from the manifest (`original_file_path` not present)
-- Renames where the old path is in the manifest but the new path is not
-- Various materializations (`table`, `view`, `incremental`, `ephemeral`)
-
-This is tracked as a future improvement to increase confidence in edge-case handling without requiring a live warehouse.
-
 ### Manifest schema version compatibility
 
 The manifest version check currently logs a warning when an unexpected `dbt_schema_version` is encountered but does not block execution. A future improvement would document the tested version matrix and surface a clearer error message (or hard stop) if a structurally incompatible version is detected.
+
+---
+
+## Contributing
+
+Contributions are welcome. The highest-impact way to contribute is adding a new warehouse adapter — see [CONTRIBUTING.md](CONTRIBUTING.md) for the adapter interface and step-by-step guide.
+
+For bugs and feature requests, open an issue. For questions, use GitHub Discussions.
 
 ---
 
