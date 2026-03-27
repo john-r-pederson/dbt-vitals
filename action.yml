@@ -1,5 +1,5 @@
 name: 'dbt-vitals'
-description: 'Warehouse impact report for deleted dbt models. Reports size and last-read stats as a PR comment before the table is gone.'
+description: 'Warehouse impact report for dbt model changes. Shows size, read counts, and downstream dependents as a PR comment — so you know whether a table is safe to delete before it is gone.'
 branding:
   icon: 'eye'
   color: 'blue'
