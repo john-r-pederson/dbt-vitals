@@ -420,3 +420,38 @@ def test_yaml_deletion_uses_lookup_path_for_manifest(mock_cfg):
 
     # Manifest must be called with the .sql path, not the .yml path
     MockManifest.return_value.get_table.assert_called_once_with("models/staging/stg_users.sql")
+
+
+def test_yaml_deletion_with_repo_subdirectory_prefix_stripped(mock_cfg):
+    """YAML-only change in a monorepo: lookup_path must have the subdir prefix stripped."""
+    mock_cfg.REPO_SUBDIRECTORY = "dbt"
+    mock_adapter = MagicMock()
+    mock_adapter.get_table_stats.return_value = {
+        "exists": True, "size_gb": 0.5, "last_altered": "2026-01-01", "last_read": None,
+        "read_count": 0, "distinct_users": 0, "access_history_available": True, "table_type": "BASE TABLE",
+    }
+    mock_reporter = MagicMock()
+
+    yaml_change = ModelChange(
+        old_path="dbt/models/stg_users.yml",
+        new_path=None,
+        lookup_path="dbt/models/stg_users.sql",
+    )
+
+    with patch("main.get_config", return_value=mock_cfg), \
+         patch("main.DiffEngine") as MockDiff, \
+         patch("main.ManifestEngine") as MockManifest, \
+         patch("main.get_adapter", return_value=mock_adapter), \
+         patch("main.Reporter", return_value=mock_reporter):
+
+        MockDiff.return_value.get_deleted_models.return_value = [yaml_change]
+        MockDiff.return_value.repo.active_branch.name = "feature/test"
+        MockManifest.return_value.get_table.return_value = {
+            "database": "DB", "schema": "SCH", "name": "STG_USERS", "materialization": "table"
+        }
+        MockManifest.return_value.get_downstream_names.return_value = []
+
+        main.run()
+
+    # Prefix must be stripped: manifest sees "models/stg_users.sql", not "dbt/models/stg_users.sql"
+    MockManifest.return_value.get_table.assert_called_once_with("models/stg_users.sql")
