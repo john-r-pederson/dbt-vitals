@@ -81,7 +81,7 @@ inputs:
 
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/john-r-pederson/dbt-vitals:v0.1.0'
+  image: 'docker://ghcr.io/john-r-pederson/dbt-vitals:latest'
   env:
     WAREHOUSE_TYPE: ${{ inputs.warehouse-type }}
     SNOWFLAKE_ACCOUNT: ${{ inputs.snowflake-account }}
