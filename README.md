@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/john-r-pederson/dbt-vitals/actions/workflows/ci.yml/badge.svg)](https://github.com/john-r-pederson/dbt-vitals/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**dbt-vitals** is a GitHub Action that protects your data warehouse from silent table drops.
+**dbt-vitals** is a GitHub Action that tells you whether a table is safe to delete — and flags warehouse tables that should have been cleaned up already.
 
-When a pull request deletes or renames a dbt model, dbt-vitals maps the file to its production warehouse table via `manifest.json`, queries Snowflake for live stats (size, last altered, read count, distinct users), and posts a **Warehouse Impact Report** as a PR comment — before the table is gone.
+When a pull request touches your dbt models, dbt-vitals cross-references your `manifest.json` against the live warehouse and posts a **Warehouse Impact Report** as a PR comment: size, last altered, read count, downstream dependents, and any warehouse tables with no matching manifest entry. No more silent drops of tables still in heavy use, and no more orphaned tables quietly accumulating storage costs.
 
 ```markdown
 ## 🔍 dbt-vitals: Warehouse Impact Report
