@@ -10,7 +10,7 @@ jobs:
   e2e:
     name: E2E Test
     runs-on: ubuntu-latest
-    if: github.repository == 'Laskr/dbt-vitals'
+    if: github.repository == 'john-r-pederson/dbt-vitals'
 
     steps:
       - name: Checkout test branch
