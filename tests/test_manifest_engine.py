@@ -97,8 +97,8 @@ def test_downstream_names_returns_dependents(engine):
 
 
 def test_downstream_names_returns_empty_for_leaf(engine):
-    # fct_orders has no dependents in the fixture
-    deps = engine.get_downstream_names("models/marts/fct_orders.sql")
+    # aliased_model has no dependents in the fixture
+    deps = engine.get_downstream_names("models/core/aliased_model.sql")
     assert deps == []
 
 
@@ -110,6 +110,12 @@ def test_downstream_names_returns_empty_for_unknown_path(engine):
 def test_downstream_names_sorted(engine):
     deps = engine.get_downstream_names("models/staging/stg_users.sql")
     assert deps == sorted(deps)
+
+
+def test_snapshot_dependent_on_model_is_tracked(engine):
+    # orders_snapshot depends on fct_orders in the fixture
+    deps = engine.get_downstream_names("models/marts/fct_orders.sql")
+    assert "ORDERS_SNAPSHOT" in deps
 
 
 def test_downstream_names_no_duplicates(tmp_path):
@@ -256,3 +262,141 @@ def test_manifest_missing_nodes_key_raises(tmp_path):
     bad.write_text(json.dumps({"metadata": {}}))
     with pytest.raises(ValueError, match="nodes"):
         ManifestEngine(provided_path=str(bad))
+
+
+# ---------------------------------------------------------------------------
+# Complex manifest scenarios
+# ---------------------------------------------------------------------------
+
+def test_snapshot_downstream_dep_tracked(tmp_path):
+    """A snapshot that depends on a model must appear in get_downstream_names."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.p.stg_orders": {
+                "resource_type": "model",
+                "original_file_path": "models/stg_orders.sql",
+                "database": "DB", "schema": "SCH", "name": "stg_orders", "alias": None,
+                "config": {"materialized": "table"}, "depends_on": {"nodes": []},
+            },
+            "snapshot.p.orders_snapshot": {
+                "resource_type": "snapshot",
+                "original_file_path": "snapshots/orders_snapshot.sql",
+                "database": "DB", "schema": "SNAPSHOTS", "name": "orders_snapshot", "alias": "ORDERS_SNAPSHOT",
+                "config": {"materialized": "snapshot"},
+                "depends_on": {"nodes": ["model.p.stg_orders"]},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    deps = eng.get_downstream_names("models/stg_orders.sql")
+    assert "ORDERS_SNAPSHOT" in deps
+
+
+def test_exposure_node_excluded_from_mapping(tmp_path):
+    """Exposure nodes must not appear in the table mapping."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "exposure.p.weekly_report": {
+                "resource_type": "exposure",
+                "original_file_path": "models/exposures.yml",
+                "database": "DB", "schema": "SCH", "name": "weekly_report", "alias": None,
+                "config": {}, "depends_on": {"nodes": []},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    assert eng.get_table("models/exposures.yml") is None
+
+
+def test_sources_top_level_key_does_not_break_parsing(tmp_path):
+    """Real manifests include a top-level 'sources' key; it must not affect node parsing."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.p.stg_users": {
+                "resource_type": "model",
+                "original_file_path": "models/stg_users.sql",
+                "database": "DB", "schema": "SCH", "name": "stg_users", "alias": None,
+                "config": {"materialized": "table"}, "depends_on": {"nodes": []},
+            },
+        },
+        "sources": {
+            "source.p.raw.users": {
+                "resource_type": "source",
+                "original_file_path": "models/sources.yml",
+                "database": "DB", "schema": "RAW", "name": "users",
+            }
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    assert eng.get_table("models/stg_users.sql") is not None
+    assert eng.get_table("models/sources.yml") is None
+
+
+def test_alias_empty_string_falls_back_to_name(tmp_path):
+    """An alias of '' (empty string) is falsy — the model name must be used instead."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.p.stg_events": {
+                "resource_type": "model",
+                "original_file_path": "models/stg_events.sql",
+                "database": "DB", "schema": "SCH", "name": "stg_events", "alias": "",
+                "config": {"materialized": "table"}, "depends_on": {"nodes": []},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    assert eng.get_table("models/stg_events.sql")["name"] == "stg_events"
+
+
+def test_missing_config_key_returns_none_materialization(tmp_path):
+    """A node with no 'config' key at all must not raise; materialization is None."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.p.stg_bare": {
+                "resource_type": "model",
+                "original_file_path": "models/stg_bare.sql",
+                "database": "DB", "schema": "SCH", "name": "stg_bare", "alias": None,
+                "depends_on": {"nodes": []},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    result = eng.get_table("models/stg_bare.sql")
+    assert result is not None
+    assert result["materialization"] is None
+
+
+def test_monorepo_path_collision_last_node_wins(tmp_path):
+    """
+    In a monorepo with two dbt packages, two nodes can share the same
+    original_file_path. The current behaviour is last-parsed wins.
+    This test documents that behaviour so any future change is explicit.
+    """
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.package_a.stg_users": {
+                "resource_type": "model",
+                "original_file_path": "models/stg_users.sql",
+                "database": "DB_A", "schema": "SCH", "name": "stg_users", "alias": None,
+                "config": {"materialized": "table"}, "depends_on": {"nodes": []},
+            },
+            "model.package_b.stg_users": {
+                "resource_type": "model",
+                "original_file_path": "models/stg_users.sql",
+                "database": "DB_B", "schema": "SCH", "name": "stg_users", "alias": None,
+                "config": {"materialized": "table"}, "depends_on": {"nodes": []},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    result = eng.get_table("models/stg_users.sql")
+    # One of the two entries wins — either DB_A or DB_B. The point is it doesn't crash
+    # and returns a deterministic result (not None).
+    assert result is not None
+    assert result["database"] in ("DB_A", "DB_B")

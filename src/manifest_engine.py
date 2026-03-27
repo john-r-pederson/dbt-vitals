@@ -67,8 +67,8 @@ class ManifestEngine:
                     "materialization": metadata.get("config", {}).get("materialized"),
                 }
 
-            # Build reverse deps for all model nodes
-            if metadata.get("resource_type") == "model":
+            # Build reverse deps for model and snapshot nodes
+            if metadata.get("resource_type") in ("model", "snapshot"):
                 dep_name = metadata.get("alias") or metadata.get("name")
                 for dep_node_id in metadata.get("depends_on", {}).get("nodes", []):
                     reverse_deps[dep_node_id].append(dep_name)
