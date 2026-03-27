@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'models/**/*.sql'
+      - 'models/**/*.yml'    # Required for YAML-only schema file deletion detection
+      - 'models/**/*.yaml'   # Required for YAML-only schema file deletion detection
       - 'snapshots/**/*.sql'
       - 'seeds/**/*.csv'
 
