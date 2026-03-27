@@ -1,6 +1,6 @@
 [project]
 name = "dbt-vitals"
-version = "0.1.0"
+version = "0.1.1"
 description = "Warehouse impact report for deleted dbt models. Reports size, reads, and lineage as a GitHub PR comment."
 readme = "README.md"
 requires-python = ">=3.13"
