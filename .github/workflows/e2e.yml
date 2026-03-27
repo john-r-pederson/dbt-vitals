@@ -24,8 +24,9 @@ jobs:
 
       - name: Run dbt-vitals E2E
         run: |
-          uv run python src/main.py > /tmp/e2e-output.txt 2>&1
+          uv run python src/main.py > /tmp/e2e-output.txt 2>&1; EXIT=$?
           cat /tmp/e2e-output.txt
+          exit $EXIT
         env:
           GITHUB_BASE_REF: main
           MANIFEST_PATH: ./test-dbt-repo/target/manifest.json
