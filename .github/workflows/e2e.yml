@@ -24,8 +24,12 @@ jobs:
 
       - name: Run dbt-vitals E2E
         run: |
-          uv run python src/main.py > /tmp/e2e-output.txt 2>&1; EXIT=$?
-          cat /tmp/e2e-output.txt
+          echo "=== uv/python versions ==="
+          uv --version
+          uv run python --version
+          echo "=== running dbt-vitals ==="
+          uv run python src/main.py 2>&1 | tee /tmp/e2e-output.txt; EXIT=${PIPESTATUS[0]}
+          echo "=== exit code: $EXIT | output: $(wc -c < /tmp/e2e-output.txt) bytes ==="
           exit $EXIT
         env:
           GITHUB_BASE_REF: main
