@@ -22,7 +22,7 @@ _GITHUB_API_BASE = os.environ.get("GITHUB_API_URL", "https://api.github.com")
 
 # Canonical URL for the dbt-vitals project — always used in the report footer,
 # independent of the user's GITHUB_REPOSITORY.
-_TOOL_URL = "https://github.com/Laskr/dbt-vitals"
+_TOOL_URL = "https://github.com/john-r-pederson/dbt-vitals"
 
 
 @dataclass
