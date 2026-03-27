@@ -15,7 +15,7 @@ class ManifestEngine:
     def __init__(self, provided_path: str | None = None) -> None:
         """Load and parse manifest. Uses provided_path if given; otherwise autodiscovers target/manifest.json."""
         self.manifest_path = provided_path or self._discover_manifest()
-        self.mapping, self.reverse_deps = self._build_mapping()
+        self.mapping, self.reverse_deps, self.node_names = self._build_mapping()
 
     def _discover_manifest(self) -> str:
         """
@@ -37,16 +37,23 @@ class ManifestEngine:
             "or set MANIFEST_PATH explicitly."
         )
 
-    def _build_mapping(self) -> tuple[dict[str, Any], dict[str, list[str]]]:
-        """Build and return (mapping, reverse_deps): file_path → table metadata and node_id → downstream names."""
+    def _build_mapping(self) -> tuple[dict[str, Any], dict[str, list[str]], dict[str, str]]:
+        """Build and return (mapping, reverse_deps, node_names).
+
+        mapping:      file_path → table metadata
+        reverse_deps: upstream_node_id → [downstream_node_ids]  (edges point toward consumers)
+        node_names:   node_id → display name (alias or name)
+        """
         with open(self.manifest_path, "r") as f:
             data = json.load(f)
 
         self._check_staleness(data)
 
-        mapping = {}
-        # Build reverse dep map: {node_id -> [model_names_that_depend_on_it]}
-        reverse_deps = defaultdict(list)
+        mapping: dict[str, Any] = {}
+        # Edges point toward consumers: upstream_id → [child_node_ids]
+        reverse_deps: defaultdict[str, list[str]] = defaultdict(list)
+        # Display name for each node, used at the end of BFS traversal
+        node_names: dict[str, str] = {}
 
         nodes = data.get("nodes")
         if nodes is None:
@@ -55,23 +62,27 @@ class ManifestEngine:
                 "This may not be a compiled manifest — run 'dbt compile' to generate one."
             )
         for node_id, metadata in nodes.items():
-            if metadata.get("resource_type") in ("model", "snapshot", "seed"):
+            resource_type = metadata.get("resource_type")
+            display_name = metadata.get("alias") or metadata.get("name")
+
+            if resource_type in ("model", "snapshot", "seed"):
                 file_path = metadata.get("original_file_path")
                 if not file_path:
                     continue
                 mapping[file_path] = {
                     "database": metadata.get("database"),
                     "schema": metadata.get("schema"),
-                    "name": metadata.get("alias") or metadata.get("name"),
+                    "name": display_name,
                     "node_id": node_id,
                     "materialization": metadata.get("config", {}).get("materialized"),
                 }
+                node_names[node_id] = display_name
 
-            # Build reverse deps for model and snapshot nodes
-            if metadata.get("resource_type") in ("model", "snapshot"):
-                dep_name = metadata.get("alias") or metadata.get("name")
+            # Build reverse edges for model and snapshot nodes so we can traverse
+            # the full consumer graph in get_downstream_names.
+            if resource_type in ("model", "snapshot"):
                 for dep_node_id in metadata.get("depends_on", {}).get("nodes", []):
-                    reverse_deps[dep_node_id].append(dep_name)
+                    reverse_deps[dep_node_id].append(node_id)
 
         if not mapping:
             logger.warning(
@@ -80,7 +91,7 @@ class ManifestEngine:
                 "(run 'dbt compile' first)."
             )
 
-        return mapping, dict(reverse_deps)
+        return mapping, dict(reverse_deps), node_names
 
     def _check_staleness(self, data: dict[str, Any]) -> None:
         """Logs manifest schema version and warns if the manifest was generated more than 24 hours ago."""
@@ -119,12 +130,31 @@ class ManifestEngine:
 
     def get_downstream_names(self, file_path: str | None) -> list[str]:
         """
-        Returns the names of dbt models that directly depend on this file's model.
-        Uses the reverse dependency map built from depends_on.nodes in the manifest.
+        Returns the display names of all nodes that transitively depend on this model,
+        using breadth-first traversal of the reverse dependency graph.
+
+        Includes direct dependents and all indirect consumers reachable through them.
         Returns an empty list if the model has no dependents or is not in the manifest.
+        The visited set prevents infinite loops in the (theoretically impossible but
+        defensively handled) case of a cycle in the graph.
         """
         entry = self.mapping.get(file_path)
         if not entry:
             return []
-        node_id = entry.get("node_id")
-        return sorted(set(self.reverse_deps.get(node_id, [])))
+
+        start_id = entry.get("node_id")
+        visited: set[str] = set()
+        queue: list[str] = [start_id]
+        result_names: list[str] = []
+
+        while queue:
+            current_id = queue.pop(0)
+            for child_id in self.reverse_deps.get(current_id, []):
+                if child_id not in visited:
+                    visited.add(child_id)
+                    name = self.node_names.get(child_id)
+                    if name:
+                        result_names.append(name)
+                    queue.append(child_id)
+
+        return sorted(set(result_names))
