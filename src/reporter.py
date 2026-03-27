@@ -114,9 +114,15 @@ class Reporter:
                 if r.distinct_users > 0:
                     reads += f" ({r.distinct_users} users)"
 
-            # dbt downstream dependents
+            # dbt downstream dependents — cap display to avoid unwieldy cells in large DAGs
             if r.downstream_names:
-                deps = ", ".join(f"`{n}`" for n in r.downstream_names)
+                names = r.downstream_names
+                limit = 5
+                if len(names) <= limit:
+                    deps = ", ".join(f"`{n}`" for n in names)
+                else:
+                    shown = ", ".join(f"`{n}`" for n in names[:limit])
+                    deps = f"{shown} _(+{len(names) - limit} more)_"
             else:
                 deps = "—"
 
@@ -130,13 +136,8 @@ class Reporter:
             "> ⚠️ Tables with recent reads or dbt dependents may have active consumers outside this PR.",
         ]
         if has_dependents:
-            example_model = next(
-                (os.path.splitext(os.path.basename(r.file_path))[0] for r in reports if r.downstream_names),
-                "<model>",
-            )
             footer.append(
-                "> ℹ️ **dbt Dependents** shows direct downstream models only — "
-                f"run `dbt ls --select {example_model}+` for the full lineage."
+                "> ℹ️ **dbt Dependents** shows the full transitive lineage — direct and indirect downstream models."
             )
         footer += [
             "",

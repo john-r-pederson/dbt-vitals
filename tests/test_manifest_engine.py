@@ -90,10 +90,12 @@ def test_seed_resource_type_included(engine):
 # ---------------------------------------------------------------------------
 
 def test_downstream_names_returns_dependents(engine):
-    # fct_orders and aliased_model both depend on stg_users
+    # fct_orders and aliased_model directly depend on stg_users;
+    # orders_snapshot depends transitively (via fct_orders)
     deps = engine.get_downstream_names("models/staging/stg_users.sql")
     assert "CUSTOM_ALIAS" in deps
     assert "fct_orders" in deps
+    assert "ORDERS_SNAPSHOT" in deps  # transitive via fct_orders
 
 
 def test_downstream_names_returns_empty_for_leaf(engine):
@@ -116,6 +118,90 @@ def test_snapshot_dependent_on_model_is_tracked(engine):
     # orders_snapshot depends on fct_orders in the fixture
     deps = engine.get_downstream_names("models/marts/fct_orders.sql")
     assert "ORDERS_SNAPSHOT" in deps
+
+
+def test_transitive_chain_fully_traversed(tmp_path):
+    """A → B → C: deleting A must surface both B and C as downstream."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.p.A": {
+                "resource_type": "model", "original_file_path": "models/a.sql",
+                "database": "DB", "schema": "SCH", "name": "A", "alias": None,
+                "config": {}, "depends_on": {"nodes": []},
+            },
+            "model.p.B": {
+                "resource_type": "model", "original_file_path": "models/b.sql",
+                "database": "DB", "schema": "SCH", "name": "B", "alias": None,
+                "config": {}, "depends_on": {"nodes": ["model.p.A"]},
+            },
+            "model.p.C": {
+                "resource_type": "model", "original_file_path": "models/c.sql",
+                "database": "DB", "schema": "SCH", "name": "C", "alias": None,
+                "config": {}, "depends_on": {"nodes": ["model.p.B"]},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    deps = eng.get_downstream_names("models/a.sql")
+    assert "B" in deps
+    assert "C" in deps
+
+
+def test_diamond_dependency_no_duplicates(tmp_path):
+    """A → B, A → C, B → D, C → D: D must appear exactly once."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.p.A": {
+                "resource_type": "model", "original_file_path": "models/a.sql",
+                "database": "DB", "schema": "SCH", "name": "A", "alias": None,
+                "config": {}, "depends_on": {"nodes": []},
+            },
+            "model.p.B": {
+                "resource_type": "model", "original_file_path": "models/b.sql",
+                "database": "DB", "schema": "SCH", "name": "B", "alias": None,
+                "config": {}, "depends_on": {"nodes": ["model.p.A"]},
+            },
+            "model.p.C": {
+                "resource_type": "model", "original_file_path": "models/c.sql",
+                "database": "DB", "schema": "SCH", "name": "C", "alias": None,
+                "config": {}, "depends_on": {"nodes": ["model.p.A"]},
+            },
+            "model.p.D": {
+                "resource_type": "model", "original_file_path": "models/d.sql",
+                "database": "DB", "schema": "SCH", "name": "D", "alias": None,
+                "config": {}, "depends_on": {"nodes": ["model.p.B", "model.p.C"]},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    deps = eng.get_downstream_names("models/a.sql")
+    assert deps.count("D") == 1  # deduplicated
+    assert set(deps) == {"B", "C", "D"}
+
+
+def test_cycle_in_manifest_does_not_infinite_loop(tmp_path):
+    """A corrupt manifest with A → B → A must not cause an infinite loop."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "nodes": {
+            "model.p.A": {
+                "resource_type": "model", "original_file_path": "models/a.sql",
+                "database": "DB", "schema": "SCH", "name": "A", "alias": None,
+                "config": {}, "depends_on": {"nodes": ["model.p.B"]},
+            },
+            "model.p.B": {
+                "resource_type": "model", "original_file_path": "models/b.sql",
+                "database": "DB", "schema": "SCH", "name": "B", "alias": None,
+                "config": {}, "depends_on": {"nodes": ["model.p.A"]},
+            },
+        }
+    }))
+    eng = ManifestEngine(provided_path=str(manifest))
+    # Must terminate and return whatever is reachable without looping
+    deps = eng.get_downstream_names("models/a.sql")
+    assert isinstance(deps, list)
 
 
 def test_downstream_names_no_duplicates(tmp_path):
