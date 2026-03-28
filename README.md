@@ -2,19 +2,29 @@
 
 [![CI](https://github.com/john-r-pederson/dbt-vitals/actions/workflows/ci.yml/badge.svg)](https://github.com/john-r-pederson/dbt-vitals/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**dbt-vitals** is a GitHub Action that tells you whether a table is safe to delete — and flags warehouse tables that should have been cleaned up already.
+**dbt-vitals** is a GitHub Action that tells you the warehouse impact of a dbt change before you merge it.
 
-When a pull request deletes or renames a dbt model, dbt-vitals cross-references your `manifest.json` against the live warehouse and posts a **Warehouse Impact Report** as a PR comment: size, last altered, read count, and downstream dependents. See exactly what you're about to lose — and whether anything still depends on it — before you merge.
+When a PR deletes, renames, or removes schema config for a dbt model, snapshot, or seed, dbt-vitals cross-references your `manifest.json` against the live warehouse and posts a **Warehouse Impact Report** as a PR comment: table size, last altered timestamp, read count, distinct users, and full transitive downstream lineage. See exactly what you're about to lose — and whether anything still depends on it — before the table is gone.
+
+**What triggers a report row:**
+
+| Change | File types | Default | Notes |
+| :--- | :--- | :---: | :--- |
+| Model deleted or renamed | `.sql` in `models/` | ✅ | All subdirectories |
+| Seed deleted or renamed | `.csv` in `seeds/` | ✅ | All subdirectories |
+| Snapshot deleted or renamed | `.sql` in `snapshots/` | ❌ | Set `target-dir: models/,snapshots/` |
+| Schema config removed | `.yml`/`.yaml` in `models/` | ✅ | Only when the paired `.sql` still exists — table is live but schema config is gone |
 
 ```markdown
 ## 🔍 dbt-vitals: Warehouse Impact Report
 
-> **2 model(s) deleted or renamed in this PR.** Review before merging.
+> **3 model(s) deleted or renamed in this PR.** Review before merging.
 
 | Model | Warehouse Table | Type | Size | Last Altered | Reads (90d) | dbt Dependents |
 | :--- | :--- | :--- | ---: | :--- | ---: | :--- |
-| 🔴 `models/stg_users.sql` | `PROD.STAGING.STG_USERS` | table | 42.1 GB | 2026-03-24 | 318 (12 users) | `fct_orders`, `rpt_users` |
-| `models/stg_sessions.sql` | `PROD.STAGING.STG_SESSIONS` | view | — | 2026-03-20 | 0 | — |
+| 🔴 `models/stg_users.sql` | `PROD.STAGING.STG_USERS` | table | 42.1 GB | 2026-03-24 | 318 (12 users) | `fct_orders`, `rpt_revenue`, `rpt_users` |
+| `models/stg_sessions.sql` _(→ `models/archive/stg_sessions.sql`)_ | `PROD.STAGING.STG_SESSIONS` | view | — | 2026-03-20 | 0 | — |
+| `seeds/ref_countries.csv` | `PROD.SEEDS.REF_COUNTRIES` | table | 0 bytes | 2026-01-15 | 4 (1 user) | — |
 
 > ⚠️ Tables with recent reads or dbt dependents may have active consumers outside this PR.
 ```

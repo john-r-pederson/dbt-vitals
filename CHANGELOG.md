@@ -3,6 +3,40 @@
 All notable changes will be documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.0] — 2026-03-27
+
+### Added
+
+- **Full transitive dependency traversal** — the dbt Dependents column now shows the complete downstream lineage via breadth-first search of the dbt DAG, not just direct 1-hop dependents. Includes cycle protection and diamond-deduplication.
+
+### Changed
+
+- Dependents column footer note updated from "direct downstream models only" to "full transitive lineage"
+
+---
+
+## [0.1.2] — 2026-03-26
+
+### Fixed
+
+- **Snapshot downstream deps** — snapshots that depend on a deleted model were missing from the dependents column; fixed by including `snapshot` resource type in the reverse-dependency map alongside `model`
+- **Report footer URL** — pointed to old internal repo; corrected to `github.com/john-r-pederson/dbt-vitals`
+
+---
+
+## [0.1.1] — 2026-03-26
+
+### Fixed
+
+- **`GITHUB_BASE_REF` env var isolation in tests** — test for missing base branch was leaking the env var and passing for the wrong reason
+
+### Changed
+
+- E2E workflow now runs against the published Docker image instead of a local `uv run`, making it a true integration test of what users actually get
+- Dependency bumps: `actions/checkout` → v6.0.2, `docker/login-action` → v4.0.0, `docker/build-push-action` → v7.0.0, `astral-sh/setup-uv` → v7.6.0
+
+---
+
 ## [0.1.0] — 2026-03-25
 
 ### Added
