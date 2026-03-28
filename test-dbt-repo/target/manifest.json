@@ -63,6 +63,16 @@
       "alias": "REF_COUNTRIES",
       "config": {"materialized": "seed"},
       "depends_on": {"nodes": []}
+    },
+    "snapshot.dbt_vitals_test.orders_snapshot": {
+      "resource_type": "snapshot",
+      "original_file_path": "snapshots/orders_snapshot.sql",
+      "database": "DBT_VITALS_DB",
+      "schema": "DBT_VITALS_SNAPSHOTS",
+      "name": "orders_snapshot",
+      "alias": "ORDERS_SNAPSHOT",
+      "config": {"materialized": "snapshot"},
+      "depends_on": {"nodes": ["model.dbt_vitals_test.fct_orders"]}
     }
   }
 }
