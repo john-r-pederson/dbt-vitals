@@ -1,6 +1,6 @@
 # dbt-vitals — CLAUDE.md
 
-Warehouse-agnostic dbt linter. Runs as a GitHub Action. When a PR deletes or renames a dbt model, dbt-vitals maps it to the production warehouse table via `manifest.json` and posts a "Vital Signs" report (size, last altered, last read) as a PR comment — before the table is gone.
+GitHub Action that surfaces the warehouse impact of dbt model changes before they merge. When a PR deletes, renames, or removes the schema config for a dbt model, snapshot, or seed, dbt-vitals maps the file to its production warehouse table via `manifest.json` and posts a Warehouse Impact Report (size, last altered, read counts, full transitive downstream lineage) as a PR comment. Snowflake is the only supported warehouse today; the adapter pattern is designed for BigQuery/Redshift/Databricks additions.
 
 ---
 
@@ -39,7 +39,7 @@ uv run pytest tests/ -v
 src/
   main.py                   # Orchestrator — thin, delegates to engines/adapters
   config.py                 # Pydantic-settings; all env var config lives here
-  diff_engine.py            # gitpython: HEAD vs base branch → deleted .sql paths
+  diff_engine.py            # gitpython: HEAD vs base branch → deleted/renamed .sql, .yml, .csv paths
   manifest_engine.py        # Parses target/manifest.json → warehouse object names
   reporter.py               # Builds Markdown table; posts/updates GitHub PR comment
   adapters/
@@ -48,9 +48,13 @@ src/
     snowflake_adapter.py    # Snowflake implementation (key-pair + browser auth)
 tests/
   fixtures/manifest.json    # Minimal manifest for unit tests
+  test_config.py
   test_diff_engine.py
+  test_factory.py
+  test_main.py
   test_manifest_engine.py
   test_reporter.py
+  test_snowflake_adapter.py
 models/
   stg_users.sql             # Local test fixture — simulates a dbt model file
 test-dbt-repo/
@@ -63,7 +67,8 @@ test-dbt-repo/
 
 **Adding a new warehouse adapter:**
 1. Create `src/adapters/<warehouse>_adapter.py` implementing `BaseWarehouseAdapter`
-2. `get_table_stats()` must return `{"exists": bool, "size_gb": float, "last_altered": str|None, "last_read": str|None}`
+2. `get_table_stats()` must return:
+   `{"exists": bool, "size_gb": float|None, "last_altered": str|None, "last_read": str|None, "read_count": int, "distinct_users": int, "access_history_available": bool, "table_type": str|None, "query_error": bool}`
 3. Add a branch to `src/adapters/factory.py`
 4. Add warehouse-specific fields to `src/config.py`
 
@@ -123,7 +128,7 @@ Delete key files from filesystem immediately after — never commit them.
 ## Local End-to-End Test
 
 ```bash
-# Comprehensive E2E test branch — covers 7 scenarios
+# Comprehensive E2E test branch — covers 8 scenarios
 git checkout test/e2e-scenarios
 uv run python src/main.py
 ```
@@ -139,6 +144,7 @@ Uses `./test-dbt-repo/target/manifest.json`. Scenarios covered:
 | Seed (.csv) | `seeds/ref_countries.csv` |
 | Downstream dep tracking | `fct_orders` depends on `stg_users` in manifest |
 | Risk indicator | `stg_users` shows 🟡/🔴 due to downstream dep |
+| Transitive dep tracking | `orders_snapshot` (snapshot) depends on `fct_orders` → appears under `stg_users` |
 
 **Known E2E gap:** access history unavailable (`_(no ACCESS_HISTORY grant)_`) requires a separate Snowflake role without `IMPORTED PRIVILEGES`. Covered by unit tests in `tests/test_snowflake_adapter.py`.
 
