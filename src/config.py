@@ -55,6 +55,14 @@ class Settings(BaseSettings):
             raise ValueError("LOOKBACK_DAYS must be >= 1")
         return v
 
+    @field_validator("QUERY_TIMEOUT_SECONDS")
+    @classmethod
+    def validate_query_timeout(cls, v: int) -> int:
+        """Reject timeouts that would cause immediate or nonsensical query failures."""
+        if v < 1:
+            raise ValueError("QUERY_TIMEOUT_SECONDS must be >= 1")
+        return v
+
     @model_validator(mode="after")
     def check_snowflake_credentials(self) -> "Settings":
         """Validate required Snowflake fields and account format. Add per-adapter validation here as new adapters are added."""
