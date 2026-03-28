@@ -1,8 +1,9 @@
 name: 'dbt-vitals'
-description: 'Warehouse impact report for dbt model changes. Shows size, read counts, and downstream dependents as a PR comment — so you know whether a table is safe to delete before it is gone.'
+description: 'Warehouse impact report for deleted or renamed dbt models, seeds, snapshots, and schema configs — size, reads, lineage.'
+author: 'John Pederson'
 branding:
-  icon: 'eye'
-  color: 'blue'
+  icon: 'activity'
+  color: 'orange'
 
 inputs:
   # --- Warehouse ---
