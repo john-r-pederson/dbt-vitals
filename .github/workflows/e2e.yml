@@ -89,3 +89,9 @@ jobs:
           grep -qP "🟡|🔴" /tmp/e2e-output.txt \
             || { echo "FAIL: no risk indicator — stg_users has fct_orders as downstream dep, expected 🟡 or 🔴"; exit 1; }
           echo "PASS: risk indicator"
+
+      - name: Assert — transitive dependent tracked
+        run: |
+          grep -q "orders_snapshot" /tmp/e2e-output.txt \
+            || { echo "FAIL: orders_snapshot missing — transitive dep tracking broken (stg_users → fct_orders → orders_snapshot)"; exit 1; }
+          echo "PASS: transitive dep"
