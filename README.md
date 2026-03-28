@@ -80,7 +80,7 @@ jobs:
       # See "Manifest setup" below.
 
       - name: Run dbt-vitals
-        uses: john-r-pederson/dbt-vitals@v0.1.0
+        uses: john-r-pederson/dbt-vitals@v0
         with:
           warehouse-type: snowflake
           snowflake-account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
@@ -96,6 +96,8 @@ jobs:
 ```
 
 > `fetch-depth: 0` is **required**. Shallow clones break the git diff.
+
+> If you use dbt snapshots, add `target-dir: models/,snapshots/` to the step inputs and `snapshots/**/*.sql` to the workflow `paths` filter. Snapshots are not watched by default.
 
 ### 2. Add GitHub Secrets
 
@@ -306,9 +308,9 @@ Requires a `.env` file with Snowflake credentials. Copy `.env.example` and fill 
 
 ### Transitive dependencies
 
-The **dbt Dependents** column shows only direct dependents — one hop from the deleted model. A model with downstream consumers several hops away will not appear unless they also directly reference the deleted model.
+The **dbt Dependents** column shows the **full transitive lineage** — not just direct dependents. If `stg_users → fct_orders → rpt_revenue`, deleting `stg_users` will show both `fct_orders` and `rpt_revenue`. The traversal is a breadth-first walk of the dbt DAG with cycle protection.
 
-Full DAG traversal is planned for v0.2. In the meantime, run `dbt ls --select <model>+` to see the complete downstream lineage.
+dbt tests, metrics, and exposures are not included in the lineage column.
 
 ### Non-dbt consumers
 
@@ -325,7 +327,7 @@ The `ACCESS_HISTORY` read count is the closest proxy. If a table shows 318 reads
 | Redshift | Planned |
 | Databricks | Planned |
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the adapter interface and contribution guide.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the adapter interface and contribution guide. If you want to track or vote on a specific adapter, open or upvote an issue in [GitHub Issues](https://github.com/john-r-pederson/dbt-vitals/issues).
 
 ### Manifest schema version compatibility
 
@@ -356,7 +358,7 @@ dbt-vitals tracks **deletions and renames** in your configured directories. Addi
 
 ### Downstream dependents
 
-The **dbt Dependents** column shows only **direct** dependents. If `stg_users → fct_orders → rpt_revenue`, deleting `stg_users` shows `fct_orders` only. dbt tests, metrics, and exposures are not listed either. See [Roadmap](#roadmap) for transitive dependency tracking.
+The **dbt Dependents** column shows the **full transitive lineage**. If `stg_users → fct_orders → rpt_revenue`, deleting `stg_users` shows both `fct_orders` and `rpt_revenue`. The traversal is a breadth-first walk of the dbt DAG. dbt tests, metrics, and exposures are not included.
 
 ### Warehouse visibility (Snowflake)
 
