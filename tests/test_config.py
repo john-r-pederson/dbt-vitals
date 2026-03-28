@@ -160,3 +160,31 @@ def test_query_timeout_custom_value(monkeypatch):
 def test_seeds_dir_custom_value(monkeypatch):
     cfg = _settings(monkeypatch, {"SEEDS_DIR": "data/seeds/"})
     assert cfg.SEEDS_DIR == "data/seeds/"
+
+
+def test_query_timeout_zero_raises(monkeypatch):
+    with pytest.raises((ValidationError, ValueError)):
+        _settings(monkeypatch, {"QUERY_TIMEOUT_SECONDS": "0"})
+
+
+def test_query_timeout_negative_raises(monkeypatch):
+    with pytest.raises((ValidationError, ValueError)):
+        _settings(monkeypatch, {"QUERY_TIMEOUT_SECONDS": "-10"})
+
+
+# ---------------------------------------------------------------------------
+# get_config() wrapper — sys.exit on misconfiguration
+# ---------------------------------------------------------------------------
+
+def test_get_config_exits_on_invalid_settings(monkeypatch):
+    """get_config() must call sys.exit(1) when Settings raises, not propagate the exception."""
+    from config import get_config
+    monkeypatch.setenv("WAREHOUSE_TYPE", "snowflake")
+    monkeypatch.setenv("SNOWFLAKE_ACCOUNT", "wdb44754")  # no hyphen — invalid format
+    for key in ["SNOWFLAKE_USER", "SNOWFLAKE_WAREHOUSE", "SNOWFLAKE_DATABASE",
+                "SNOWFLAKE_SCHEMA", "SNOWFLAKE_ROLE"]:
+        monkeypatch.setenv(key, "x")
+
+    with pytest.raises(SystemExit) as exc_info:
+        get_config()
+    assert exc_info.value.code == 1

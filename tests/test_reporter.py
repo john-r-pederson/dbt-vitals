@@ -263,6 +263,15 @@ def test_multiple_reports_all_appear():
     assert "`models/b.sql`" in md
 
 
+def test_empty_reports_list_renders_without_error():
+    """build_markdown([]) must produce valid output with '0 model(s)' and no table rows."""
+    md = _reporter().build_markdown([])
+    assert "0 model(s)" in md
+    assert _COMMENT_TAG in md
+    # Table header present but no data rows
+    assert "| :--- |" in md
+
+
 # ---------------------------------------------------------------------------
 # publish routing
 # ---------------------------------------------------------------------------
@@ -415,7 +424,7 @@ def test_pipe_in_table_ref_is_escaped():
 # Footer URL
 # ---------------------------------------------------------------------------
 
-def test_footer_links_to_isotrope_tool_not_user_repo():
+def test_footer_links_to_dbt_vitals_not_user_repo():
     """Footer should always point to the dbt-vitals project, not the user's dbt repo."""
     r = _reporter(github_repository="owner/my-dbt-repo")
     md = r.build_markdown([])

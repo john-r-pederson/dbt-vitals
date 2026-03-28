@@ -455,3 +455,45 @@ def test_yaml_deletion_with_repo_subdirectory_prefix_stripped(mock_cfg):
 
     # Prefix must be stripped: manifest sees "models/stg_users.sql", not "dbt/models/stg_users.sql"
     MockManifest.return_value.get_table.assert_called_once_with("models/stg_users.sql")
+
+
+# ---------------------------------------------------------------------------
+# Initialization failure paths — sys.exit(1)
+# ---------------------------------------------------------------------------
+
+def test_diff_engine_init_failure_exits(mock_cfg):
+    """DiffEngine raising on init must produce sys.exit(1), not an unhandled exception."""
+    with patch("main.get_config", return_value=mock_cfg), \
+         patch("main.DiffEngine", side_effect=Exception("not a git repo")):
+        with pytest.raises(SystemExit) as exc_info:
+            main.run()
+    assert exc_info.value.code == 1
+
+
+def test_manifest_engine_file_not_found_exits(mock_cfg):
+    """ManifestEngine raising FileNotFoundError must produce sys.exit(1)."""
+    with patch("main.get_config", return_value=mock_cfg), \
+         patch("main.DiffEngine"), \
+         patch("main.ManifestEngine", side_effect=FileNotFoundError("manifest.json not found")):
+        with pytest.raises(SystemExit) as exc_info:
+            main.run()
+    assert exc_info.value.code == 1
+
+
+def test_adapter_init_failure_exits(mock_cfg):
+    """get_adapter() raising must produce sys.exit(1) and not query the warehouse."""
+    with patch("main.get_config", return_value=mock_cfg), \
+         patch("main.DiffEngine") as MockDiff, \
+         patch("main.ManifestEngine") as MockManifest, \
+         patch("main.get_adapter", side_effect=Exception("unsupported warehouse")):
+
+        MockDiff.return_value.get_deleted_models.return_value = [_deleted("models/stg.sql")]
+        MockDiff.return_value.repo.active_branch.name = "feature/test"
+        MockManifest.return_value.get_table.return_value = {
+            "database": "DB", "schema": "SCH", "name": "STG", "materialization": "table"
+        }
+        MockManifest.return_value.get_downstream_names.return_value = []
+
+        with pytest.raises(SystemExit) as exc_info:
+            main.run()
+    assert exc_info.value.code == 1
